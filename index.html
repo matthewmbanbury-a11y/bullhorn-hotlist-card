@@ -24,7 +24,7 @@
     .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
     .spinning svg { animation: spin .7s linear infinite; }
     .search-wrap { padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .search-input { width: 100%; padding: 5px 10px 5px 30px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 12px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; transition: all .15s; }
+    .search-input { width: 100%; padding: 5px 10px 5px 30px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 12px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; }
     .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,144,217,.15); background-color: var(--surface); }
     .card-body { flex: 1; overflow-y: auto; padding: 8px 14px 14px; }
     .state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px 20px; text-align: center; }
@@ -87,11 +87,13 @@
   </div>
 </div>
 
+<!-- Exact same post-robot version Bullhorn loads -->
+<script src="https://cdn.jsdelivr.net/gh/krakenjs/post-robot@7da06445/dist/post-robot.js"></script>
+
 <script>
-// ── URL params from Bullhorn ──
-const params    = new URLSearchParams(window.location.search);
-const entityId  = params.get('EntityID');
-const bhUrl     = params.get('currentBullhornUrl');
+const params   = new URLSearchParams(window.location.search);
+const entityId = params.get('EntityID');
+const bhUrl    = params.get('currentBullhornUrl');
 
 let allHotlists = [];
 let bhRestToken = null;
@@ -99,51 +101,41 @@ let restUrl     = null;
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
-// ── Get session from parent NOVO_SESSION ──
-function getSession() {
-  try {
-    const session = window.parent.NOVO_SESSION &&
-                    window.parent.NOVO_SESSION.UlSession &&
-                    window.parent.NOVO_SESSION.UlSession.sessions &&
-                    window.parent.NOVO_SESSION.UlSession.sessions.rest;
-    if (session && session.token && session.endpoint) {
-      bhRestToken = session.token;
-      restUrl     = session.endpoint;
-      // ensure trailing slash
-      if (!restUrl.endsWith('/')) restUrl += '/';
-      return true;
-    }
-  } catch(e) {
-    // cross-origin block — shouldn't happen since we're iframed within same domain
-  }
-  return false;
+// ── Use post-robot to request httpGET via AppBridge ──
+// post-robot is now the SAME version as Bullhorn's, so they can communicate
+async function appBridgeGET(relativeURL) {
+  // First register (handshake)
+  await postRobot.send(window.parent, 'register', {
+    name: 'hotlists-card',
+    version: '1.0'
+  }).catch(() => {}); // ignore if already registered
+
+  // Then do the GET
+  const result = await postRobot.send(window.parent, 'httpGET', {
+    relativeURL: relativeURL
+  });
+
+  return result.data;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
-  if (!getSession()) { showError('Could not read session from Bullhorn. Please refresh the page.'); return; }
   loadData();
 });
 
 async function loadData() {
-  if (!getSession()) { showError('Session unavailable.'); return; }
   if (!entityId) return;
-
   hideAll();
   document.getElementById('state-loading').style.display = 'flex';
   setBtnSpinning(true);
 
   try {
     const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
-    const url = restUrl + 'query/TearsheetMember'
-      + '?where=' + encodeURIComponent('candidate.id=' + entityId)
+    const relativeURL = '/query/TearsheetMember?where=' + encodeURIComponent('candidate.id=' + entityId)
       + '&fields=' + encodeURIComponent(fields)
-      + '&count=200&start=0'
-      + '&BhRestToken=' + encodeURIComponent(bhRestToken);
+      + '&count=200&start=0';
 
-    const resp = await fetch(url);
-    if (!resp.ok) throw new Error('REST query failed (' + resp.status + ')');
-    const data = await resp.json();
+    const data = await appBridgeGET(relativeURL);
     processResults(data);
   } catch (err) {
     showError(err.message || 'Failed to load data');
@@ -201,8 +193,10 @@ function renderList(items) {
 }
 
 function openTearsheet(id) {
-  const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
-  window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
+  postRobot.send(window.parent, 'open', { type: 'Tearsheet', id: id }).catch(() => {
+    const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
+    window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
+  });
 }
 
 function filterList() {
