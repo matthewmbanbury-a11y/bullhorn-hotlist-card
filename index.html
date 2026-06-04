@@ -6,71 +6,47 @@
   <title>Candidate Hotlists</title>
   <style>
     :root {
-      --bg:           #f4f5f7;
-      --surface:      #ffffff;
-      --border:       #dde1e7;
-      --accent:       #4a90d9;
-      --accent-dark:  #2f6fad;
-      --accent-light: #e8f2fc;
-      --text-primary: #1a2533;
-      --text-secondary:#5c6878;
-      --text-muted:   #9aa3af;
-      --red:          #e74c3c;
-      --red-light:    #fdf2f2;
-      --shadow-sm:    0 1px 3px rgba(0,0,0,.08);
-      --radius:       6px;
-      --font:         'Segoe UI', system-ui, -apple-system, sans-serif;
+      --bg: #f4f5f7; --surface: #ffffff; --border: #dde1e7;
+      --accent: #4a90d9; --accent-dark: #2f6fad; --accent-light: #e8f2fc;
+      --text-primary: #1a2533; --text-secondary: #5c6878; --text-muted: #9aa3af;
+      --red: #e74c3c; --shadow-sm: 0 1px 3px rgba(0,0,0,.08); --radius: 6px;
+      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; background: var(--bg); font-family: var(--font); font-size: 13px; color: var(--text-primary); overflow: hidden; }
-
-    .card { display: flex; flex-direction: column; height: 100vh; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
-
-    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
-    .card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .card { display: flex; flex-direction: column; height: 100vh; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
     .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
     .badge.hidden { display: none; }
-
-    .btn-refresh { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+    .btn-refresh { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all .15s; }
     .btn-refresh:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent-dark); }
     .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
-    .btn-refresh.spinning svg { animation: spin .7s linear infinite; }
-
+    .spinning svg { animation: spin .7s linear infinite; }
     .search-wrap { padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .search-input { width: 100%; padding: 5px 10px 5px 30px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 12px; color: var(--text-primary); outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; transition: border-color .15s, box-shadow .15s; }
+    .search-input { width: 100%; padding: 5px 10px 5px 30px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 12px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; transition: all .15s; }
     .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,144,217,.15); background-color: var(--surface); }
-
     .card-body { flex: 1; overflow-y: auto; padding: 8px 14px 14px; }
-
-    .state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px 20px; text-align: center; color: var(--text-muted); }
+    .state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px 20px; text-align: center; }
     .state-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-    .state-sub   { font-size: 12px; color: var(--text-muted); }
-
+    .state-sub { font-size: 12px; color: var(--text-muted); }
     .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
     .list { display: flex; flex-direction: column; gap: 6px; }
-    .hotlist-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: border-color .15s, box-shadow .15s, background .15s; animation: fadeIn .2s ease both; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-    .hotlist-item:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); background: var(--accent-light); }
-
+    .hotlist-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: all .15s; animation: fadeIn .2s ease both; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
+    .hotlist-item:hover { border-color: var(--accent); background: var(--accent-light); }
     .hotlist-icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; }
     .hotlist-info { flex: 1; min-width: 0; }
-    .hotlist-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hotlist-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hotlist-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hotlist-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
-
-    .btn-link { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--accent-dark); font-size: 11px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s; }
+    .btn-link { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--accent-dark); font-size: 11px; font-weight: 500; cursor: pointer; transition: all .15s; }
     .btn-link:hover { background: var(--accent-light); border-color: var(--accent); }
-
     .private-tag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #fff4e5; color: #c47900; border: 1px solid #f5d99a; font-weight: 600; }
-
     .no-results { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
-
     .card-footer { padding: 6px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
     #last-updated { font-style: italic; }
-
-    .debug-box { margin: 8px 0; padding: 8px 10px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; color: #555; font-family: monospace; word-break: break-all; display: none; }
   </style>
 </head>
 <body>
@@ -86,16 +62,11 @@
       Refresh
     </button>
   </div>
-
   <div class="search-wrap">
     <input class="search-input" id="search-input" type="text" placeholder="Filter hotlists…" oninput="filterList()" />
   </div>
-
-  <div class="card-body" id="card-body">
-    <div class="state" id="state-loading">
-      <div class="spinner"></div>
-      <div class="state-title">Loading hotlists…</div>
-    </div>
+  <div class="card-body">
+    <div class="state" id="state-loading"><div class="spinner"></div><div class="state-title">Loading hotlists…</div></div>
     <div class="state" id="state-error" style="display:none">
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <div class="state-title">Unable to load hotlists</div>
@@ -111,99 +82,61 @@
       <div class="state-sub">This candidate isn't on any hotlists yet.</div>
     </div>
   </div>
-
   <div class="card-footer">
     <span id="last-updated"></span>
     <span id="entity-label"></span>
   </div>
 </div>
 
+<!-- Load post-robot from unpkg — same library Bullhorn uses internally -->
+<script src="https://unpkg.com/post-robot/dist/post-robot.js"></script>
+
 <script>
-// ── Read URL params passed by Bullhorn ──
-const params     = new URLSearchParams(window.location.search);
-const entityId   = params.get('EntityID');
-const bhUrl      = params.get('currentBullhornUrl');
+const params   = new URLSearchParams(window.location.search);
+const entityId = params.get('EntityID');
+const bhUrl    = params.get('currentBullhornUrl');
+let allHotlists = [];
+let bridge = null;
 
-let allHotlists  = [];
-let messageId    = 0;
-const pending    = {};  // resolvers keyed by message id
+if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
-// ── post-robot style messaging to parent frame ──
-// Bullhorn uses post-robot; we replicate its envelope format so the
-// parent frame's already-loaded post-robot instance handles our messages.
-function bhRequest(method, data) {
-  return new Promise((resolve, reject) => {
-    const id = 'card_' + (++messageId);
-    const timeout = setTimeout(() => {
-      delete pending[id];
-      reject(new Error('Timeout waiting for Bullhorn response (' + method + ')'));
-    }, 10000);
+// ── Use post-robot to talk to Bullhorn's parent frame ──
+async function initBridge() {
+  // post-robot is now loaded as window.postRobot
+  const pr = window.postRobot;
 
-    pending[id] = { resolve, reject, timeout };
-
-    window.parent.postMessage({
-      type:   'postrobot_message',
-      name:   method,
-      id:     id,
-      data:   data,
-      origin: window.location.origin
-    }, '*');
+  // Step 1: register
+  await pr.send(window.parent, 'register', {
+    name: 'hotlists-card',
+    version: '1.0.0'
   });
+
+  // Step 2: return a send function for httpGET
+  return function httpGET(relativeURL) {
+    return pr.send(window.parent, 'httpGET', { relativeURL });
+  };
 }
 
-// Listen for responses from parent
-window.addEventListener('message', (event) => {
-  const msg = event.data;
-  if (!msg) return;
-
-  // post-robot response envelope
-  const ackId = msg.ack || (msg.data && msg.data.__id__) || msg.id;
-  if (ackId && pending[ackId]) {
-    clearTimeout(pending[ackId].timeout);
-    const { resolve, reject } = pending[ackId];
-    delete pending[ackId];
-    if (msg.error || (msg.data && msg.data.error)) {
-      reject(new Error(msg.error || msg.data.error));
-    } else {
-      resolve(msg.data !== undefined ? msg.data : msg);
-    }
-    return;
-  }
-
-  // Also handle flat response where the parent echoes our id
-  if (msg.type === 'postrobot_message_response' && msg.id && pending[msg.id]) {
-    clearTimeout(pending[msg.id].timeout);
-    const { resolve, reject } = pending[msg.id];
-    delete pending[msg.id];
-    if (msg.error) reject(new Error(msg.error));
-    else resolve(msg.data);
-  }
-});
-
-// ── Bootstrap ──
 document.addEventListener('DOMContentLoaded', () => {
-  if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
+  if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
   loadData();
 });
 
 async function loadData() {
-  if (!entityId) { showError('No Candidate EntityID found in URL.'); return; }
-
   hideAll();
   document.getElementById('state-loading').style.display = 'flex';
   setBtnSpinning(true);
 
   try {
-    // First register with AppBridge (required handshake)
-    await bhRequest('register', {}).catch(() => {}); // ignore if already registered
+    if (!bridge) bridge = await initBridge();
 
-    // Query TearsheetMember for this candidate
     const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
     const url = '/query/TearsheetMember?where=candidate.id%3D' + entityId +
                 '&fields=' + encodeURIComponent(fields) + '&count=200&start=0';
 
-    const resp = await bhRequest('httpGET', { relativeURL: url });
-    processResults(resp);
+    const result = await bridge(url);
+    // post-robot wraps the response in result.data
+    processResults(result.data);
 
   } catch (err) {
     showError(err.message || 'Failed to load data');
@@ -214,7 +147,6 @@ async function loadData() {
 
 function processResults(data) {
   hideAll();
-  // data may be the raw response object or wrapped
   const members = (data && data.data) ? data.data : (Array.isArray(data) ? data : []);
 
   if (!members.length) {
@@ -225,12 +157,7 @@ function processResults(data) {
 
   const seen = new Set();
   allHotlists = members
-    .filter(m => {
-      const ts = m.tearsheet;
-      if (!ts || seen.has(ts.id)) return false;
-      seen.add(ts.id);
-      return true;
-    })
+    .filter(m => { const ts = m.tearsheet; if (!ts || seen.has(ts.id)) return false; seen.add(ts.id); return true; })
     .map(m => m.tearsheet)
     .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -244,44 +171,35 @@ function renderList(items) {
   const listEl    = document.getElementById('hotlist-list');
   const noResults = document.getElementById('no-results');
   const stateList = document.getElementById('state-list');
-
   listEl.innerHTML = '';
   stateList.style.display = 'block';
-  noResults.style.display = 'none';
-
-  if (!items.length) { noResults.style.display = 'block'; return; }
+  noResults.style.display = items.length ? 'none' : 'block';
 
   items.forEach((ts, idx) => {
-    const ownerName = ts.owner ? (ts.owner.firstName + ' ' + ts.owner.lastName).trim() : 'Unknown';
-    const dateStr   = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
-    const meta      = [ownerName, dateStr].filter(Boolean).join(' · ');
-
-    const item = document.createElement('div');
+    const owner   = ts.owner ? (ts.owner.firstName + ' ' + ts.owner.lastName).trim() : 'Unknown';
+    const date    = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
+    const meta    = [owner, date].filter(Boolean).join(' · ');
+    const item    = document.createElement('div');
     item.className = 'hotlist-item';
     item.style.animationDelay = (idx * 30) + 'ms';
     item.innerHTML =
-      '<div class="hotlist-icon">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
-      '</div>' +
-      '<div class="hotlist-info">' +
-        '<div class="hotlist-name" title="' + esc(ts.name) + '">' + esc(ts.name) + '</div>' +
-        (meta ? '<div class="hotlist-meta">' + esc(meta) + '</div>' : '') +
-      '</div>' +
+      '<div class="hotlist-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>' +
+      '<div class="hotlist-info"><div class="hotlist-name" title="' + esc(ts.name) + '">' + esc(ts.name) + '</div>' +
+      (meta ? '<div class="hotlist-meta">' + esc(meta) + '</div>' : '') + '</div>' +
       '<div class="hotlist-actions">' +
-        (ts.isPrivate ? '<span class="private-tag">Private</span>' : '') +
-        (ts.id ? '<button class="btn-link" onclick="openTearsheet(' + ts.id + ')" title="Open in Bullhorn">' +
-          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
-          'Open</button>' : '') +
+      (ts.isPrivate ? '<span class="private-tag">Private</span>' : '') +
+      (ts.id ? '<button class="btn-link" onclick="openTearsheet(' + ts.id + ')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Open</button>' : '') +
       '</div>';
     listEl.appendChild(item);
   });
 }
 
 function openTearsheet(id) {
-  bhRequest('open', { type: 'Tearsheet', id: id }).catch(() => {
-    const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
-    window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
-  });
+  window.postRobot.send(window.parent, 'open', { type: 'Tearsheet', id })
+    .catch(() => {
+      const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
+      window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
+    });
 }
 
 function filterList() {
@@ -290,9 +208,7 @@ function filterList() {
 }
 
 function hideAll() {
-  ['state-loading','state-error','state-list','state-empty'].forEach(id => {
-    document.getElementById(id).style.display = 'none';
-  });
+  ['state-loading','state-error','state-list','state-empty'].forEach(id => document.getElementById(id).style.display = 'none');
 }
 function showError(msg) {
   hideAll(); setBtnSpinning(false);
@@ -305,11 +221,10 @@ function setBtnSpinning(on) {
   btn.disabled = on;
 }
 function updateTimestamp() {
-  document.getElementById('last-updated').textContent =
-    'Updated ' + new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
 }
 function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>
