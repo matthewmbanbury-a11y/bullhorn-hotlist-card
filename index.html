@@ -133,13 +133,13 @@ function prSend(name, data) {
 
     pending[hash] = { resolve, reject, timer };
 
-    window.parent.postMessage({
+    window.top.postMessage({
       type:   'postrobot_message_request',
       hash:   hash,
       name:   name,
       data:   data || {},
       domain: '*'
-    }, 'https://app.bullhornstaffing.com');
+    }, '*');
   });
 }
 
@@ -225,7 +225,7 @@ function renderList(items) {
 
 function openTearsheet(id) {
   prSend('open', { type: 'Tearsheet', id: id }).catch(function() {
-    const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
+    const base = bhUrl ? 'https://' + bhUrl : '*';
     window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
   });
 }
