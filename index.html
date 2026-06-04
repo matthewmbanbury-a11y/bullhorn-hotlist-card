@@ -46,7 +46,6 @@
     .private-tag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #fff4e5; color: #c47900; border: 1px solid #f5d99a; font-weight: 600; }
     .no-results { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
     .card-footer { padding: 6px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-    .debug-box { margin: 8px 0; padding: 8px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; font-size: 10px; font-family: monospace; white-space: pre-wrap; word-break: break-all; color: #333; max-height: 200px; overflow-y: auto; text-align: left; }
   </style>
   <script src="https://cdn.jsdelivr.net/gh/krakenjs/post-robot@7da06445/dist/post-robot.js"></script>
 </head>
@@ -72,7 +71,6 @@
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <div class="state-title">Unable to load hotlists</div>
       <div class="state-sub" id="error-msg"></div>
-      <div class="debug-box" id="debug-box" style="display:none"></div>
     </div>
     <div id="state-list" style="display:none">
       <div class="list" id="hotlist-list"></div>
@@ -82,7 +80,6 @@
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="12" y2="12"/></svg>
       <div class="state-title">No hotlists found</div>
       <div class="state-sub">This candidate isn't on any hotlists yet.</div>
-      <div class="debug-box" id="empty-debug" style="display:none"></div>
     </div>
   </div>
   <div class="card-footer">
@@ -100,13 +97,12 @@ function prSend(name, data) {
 var params   = new URLSearchParams(window.location.search);
 var entityId = params.get('EntityID');
 var bhUrl    = params.get('currentBullhornUrl');
-
 var allHotlists = [];
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
 document.addEventListener('DOMContentLoaded', function() {
-  if (!entityId) { showError('No Candidate EntityID in URL.', ''); return; }
+  if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
   loadData();
 });
 
@@ -125,47 +121,33 @@ async function loadData() {
       + '&count=200&start=0';
 
     var result = await prSend('httpGET', { relativeURL: relativeURL });
-
-    // Safely read result.data without serializing the whole post-robot wrapper
-    var safePayload = null;
-    try { safePayload = result.data; } catch(e) {}
-
-    try {
-      console.log('[HC] count:', safePayload && safePayload.count);
-      console.log('[HC] rows:', safePayload && safePayload.data && safePayload.data.length);
-      console.log('[HC] first:', JSON.stringify(safePayload && safePayload.data && safePayload.data[0]));
-    } catch(e) {}
-
-    processResults(safePayload);
+    processResults(result);
   } catch(err) {
     var msg = 'Failed to load';
-    var detail = '';
     try { if (err && err.message) msg = err.message; } catch(e) {}
-    try { detail = JSON.stringify(err, Object.getOwnPropertyNames(err)); } catch(e) { detail = String(err); }
-    showError(msg, detail);
+    showError(msg);
   } finally {
     setBtnSpinning(false);
   }
 }
 
-function extractRows(data) {
-  if (data && Array.isArray(data.data)) return data.data;
-  if (Array.isArray(data)) return data;
+function extractRows(result) {
+  try {
+    // Post-robot wraps response: result -> .data -> { start, count, data: [...], error }
+    var a = result && result.data;         // { start, count, data: [...], error }
+    var b = a && a.data;                   // [ ...tearsheets... ]
+    if (Array.isArray(b)) return b;
+    if (Array.isArray(a)) return a;
+  } catch(e) {}
   return [];
 }
 
-function processResults(data) {
+function processResults(result) {
   hideAll();
-  var rows = extractRows(data);
-
-  var rawTxt = '';
-  try { rawTxt = JSON.stringify(data); } catch(e) { rawTxt = 'count=' + (data && data.count) + ' rows=' + (data && data.data && data.data.length); }
+  var rows = extractRows(result);
 
   if (!rows.length) {
     document.getElementById('state-empty').style.display = 'flex';
-    var ed = document.getElementById('empty-debug');
-    ed.textContent = rawTxt;
-    ed.style.display = 'block';
     updateTimestamp();
     return;
   }
@@ -226,12 +208,10 @@ function hideAll() {
   });
 }
 
-function showError(msg, detail) {
+function showError(msg) {
   hideAll(); setBtnSpinning(false);
   document.getElementById('state-error').style.display = 'flex';
   document.getElementById('error-msg').textContent = msg || 'Unknown error';
-  var dbg = document.getElementById('debug-box');
-  if (detail) { dbg.textContent = detail; dbg.style.display = 'block'; }
 }
 
 function setBtnSpinning(on) {
