@@ -130,8 +130,10 @@ async function loadData() {
       + '&count=200&start=0';
 
     const result = await prSend('httpGET', { relativeURL: relativeURL });
+    console.log('[HotlistCard] httpGET result:', JSON.stringify(result));
     processResults(result.data);
   } catch(err) {
+    console.log('[HotlistCard] error:', err);
     showError(err.message || 'Failed to load');
   } finally {
     setBtnSpinning(false);
