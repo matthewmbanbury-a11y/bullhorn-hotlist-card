@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Candidate Hotlists</title>
   <style>
-    /* ── Novo-adjacent palette ── */
     :root {
       --bg:           #f4f5f7;
       --surface:      #ffffff;
@@ -16,314 +15,89 @@
       --text-primary: #1a2533;
       --text-secondary:#5c6878;
       --text-muted:   #9aa3af;
-      --green:        #27ae60;
-      --green-light:  #eafaf1;
       --red:          #e74c3c;
       --red-light:    #fdf2f2;
       --shadow-sm:    0 1px 3px rgba(0,0,0,.08);
-      --shadow-md:    0 4px 12px rgba(0,0,0,.10);
       --radius:       6px;
       --font:         'Segoe UI', system-ui, -apple-system, sans-serif;
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); font-family: var(--font); font-size: 13px; color: var(--text-primary); overflow: hidden; }
 
-    html, body {
-      height: 100%;
-      background: var(--bg);
-      font-family: var(--font);
-      font-size: 13px;
-      color: var(--text-primary);
-      /* avoid double scrollbar inside BH iframe */
-      overflow: hidden;
-    }
+    .card { display: flex; flex-direction: column; height: 100vh; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm); }
 
-    /* ── Layout shell ── */
-    .card {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-    }
-
-    /* ── Header ── */
-    .card-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
-    }
-    .card-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-primary);
-      letter-spacing: .01em;
-    }
-    .card-title svg { flex-shrink: 0; }
-
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 20px;
-      height: 20px;
-      padding: 0 6px;
-      border-radius: 10px;
-      background: var(--accent);
-      color: #fff;
-      font-size: 11px;
-      font-weight: 700;
-      line-height: 1;
-    }
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+    .card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+    .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
     .badge.hidden { display: none; }
 
-    .btn-refresh {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      color: var(--text-secondary);
-      font-size: 12px;
-      cursor: pointer;
-      transition: background .15s, color .15s, border-color .15s;
-    }
-    .btn-refresh:hover {
-      background: var(--accent-light);
-      border-color: var(--accent);
-      color: var(--accent-dark);
-    }
-    .btn-refresh svg { transition: transform .4s; }
-    .btn-refresh.spinning svg { transform: rotate(360deg); }
+    .btn-refresh { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+    .btn-refresh:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent-dark); }
+    .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-refresh.spinning svg { animation: spin .7s linear infinite; }
 
-    /* ── Search bar ── */
-    .search-wrap {
-      padding: 8px 14px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .search-input {
-      width: 100%;
-      padding: 5px 10px 5px 30px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--bg);
-      font-size: 12px;
-      color: var(--text-primary);
-      outline: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: 9px center;
-      transition: border-color .15s, box-shadow .15s;
-    }
-    .search-input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(74,144,217,.15);
-      background-color: var(--surface);
-    }
+    .search-wrap { padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .search-input { width: 100%; padding: 5px 10px 5px 30px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 12px; color: var(--text-primary); outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; transition: border-color .15s, box-shadow .15s; }
+    .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,144,217,.15); background-color: var(--surface); }
 
-    /* ── Body ── */
-    .card-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px 14px 14px;
-    }
+    .card-body { flex: 1; overflow-y: auto; padding: 8px 14px 14px; }
 
-    /* ── States ── */
-    .state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 32px 20px;
-      text-align: center;
-      color: var(--text-muted);
-    }
-    .state svg { opacity: .5; }
+    .state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px 20px; text-align: center; color: var(--text-muted); }
     .state-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
     .state-sub   { font-size: 12px; color: var(--text-muted); }
 
-    .spinner {
-      width: 28px; height: 28px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
-      border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
+    .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .error-box {
-      padding: 10px 12px;
-      border: 1px solid #f5c6cb;
-      border-radius: var(--radius);
-      background: var(--red-light);
-      color: var(--red);
-      font-size: 12px;
-      line-height: 1.5;
-      margin: 8px 0;
-    }
-
-    /* ── List ── */
     .list { display: flex; flex-direction: column; gap: 6px; }
-
-    .hotlist-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      transition: border-color .15s, box-shadow .15s, background .15s;
-      cursor: default;
-      animation: fadeIn .2s ease both;
-    }
+    .hotlist-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: border-color .15s, box-shadow .15s, background .15s; animation: fadeIn .2s ease both; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .hotlist-item:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); background: var(--accent-light); }
 
-    .hotlist-item:hover {
-      border-color: var(--accent);
-      box-shadow: var(--shadow-sm);
-      background: var(--accent-light);
-    }
-
-    .hotlist-icon {
-      flex-shrink: 0;
-      width: 28px; height: 28px;
-      border-radius: 50%;
-      background: var(--accent-light);
-      display: flex; align-items: center; justify-content: center;
-    }
-
+    .hotlist-icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; }
     .hotlist-info { flex: 1; min-width: 0; }
-    .hotlist-name {
-      font-size: 12.5px;
-      font-weight: 600;
-      color: var(--text-primary);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .hotlist-meta {
-      font-size: 11px;
-      color: var(--text-muted);
-      margin-top: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .hotlist-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hotlist-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hotlist-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
 
-    .hotlist-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .btn-link { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--accent-dark); font-size: 11px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background .15s, border-color .15s; }
+    .btn-link:hover { background: var(--accent-light); border-color: var(--accent); }
 
-    .btn-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 3px;
-      padding: 3px 8px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      color: var(--accent-dark);
-      font-size: 11px;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background .15s, border-color .15s;
-    }
-    .btn-link:hover {
-      background: var(--accent-light);
-      border-color: var(--accent);
-    }
+    .private-tag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #fff4e5; color: #c47900; border: 1px solid #f5d99a; font-weight: 600; }
 
-    .private-tag {
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 10px;
-      background: #fff4e5;
-      color: #c47900;
-      border: 1px solid #f5d99a;
-      font-weight: 600;
-    }
+    .no-results { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
 
-    .no-results {
-      text-align: center;
-      padding: 24px;
-      color: var(--text-muted);
-      font-size: 12px;
-    }
-
-    /* ── Footer ── */
-    .card-footer {
-      padding: 6px 14px;
-      border-top: 1px solid var(--border);
-      font-size: 11px;
-      color: var(--text-muted);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
+    .card-footer { padding: 6px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
     #last-updated { font-style: italic; }
+
+    .debug-box { margin: 8px 0; padding: 8px 10px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; color: #555; font-family: monospace; word-break: break-all; display: none; }
   </style>
 </head>
 <body>
-
 <div class="card">
-
-  <!-- Header -->
   <div class="card-header">
     <div class="card-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-           stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-        <circle cx="9" cy="7" r="4"/>
-        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-      </svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Hotlists / Tearsheets
       <span class="badge hidden" id="count-badge">0</span>
     </div>
     <button class="btn-refresh" id="btn-refresh" onclick="loadData()" title="Refresh">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="23 4 23 10 17 10"/>
-        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-      </svg>
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
       Refresh
     </button>
   </div>
 
-  <!-- Search -->
   <div class="search-wrap">
-    <input class="search-input" id="search-input" type="text"
-           placeholder="Filter hotlists…" oninput="filterList()" />
+    <input class="search-input" id="search-input" type="text" placeholder="Filter hotlists…" oninput="filterList()" />
   </div>
 
-  <!-- Body -->
   <div class="card-body" id="card-body">
     <div class="state" id="state-loading">
       <div class="spinner"></div>
       <div class="state-title">Loading hotlists…</div>
     </div>
     <div class="state" id="state-error" style="display:none">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none"
-           stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <div class="state-title">Unable to load hotlists</div>
       <div class="state-sub" id="error-msg"></div>
     </div>
@@ -332,213 +106,123 @@
       <div class="no-results" id="no-results" style="display:none">No matching hotlists found.</div>
     </div>
     <div class="state" id="state-empty" style="display:none">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none"
-           stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <line x1="9" y1="9" x2="15" y2="9"/>
-        <line x1="9" y1="12" x2="12" y2="12"/>
-      </svg>
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="12" y2="12"/></svg>
       <div class="state-title">No hotlists found</div>
       <div class="state-sub">This candidate isn't on any hotlists yet.</div>
     </div>
   </div>
 
-  <!-- Footer -->
   <div class="card-footer">
     <span id="last-updated"></span>
-    <span id="entity-label" style="color:var(--text-muted)"></span>
+    <span id="entity-label"></span>
   </div>
-
 </div>
 
 <script>
-// ─────────────────────────────────────────────
-//  Parse URL params passed by Bullhorn
-// ─────────────────────────────────────────────
-const params       = new URLSearchParams(window.location.search);
-const entityId     = params.get('EntityID');
-const authCode     = params.get('authCode');
-const entityType   = params.get('EntityType') || 'Candidate';
-const corpId       = params.get('CorporationID');
-const currentBhUrl = params.get('currentBullhornUrl');   // e.g. "cls2000.bullhornstaffing.com"
+// ── Read URL params passed by Bullhorn ──
+const params     = new URLSearchParams(window.location.search);
+const entityId   = params.get('EntityID');
+const bhUrl      = params.get('currentBullhornUrl');
 
-// Partner credentials — replace with your actual values
-// These are used when authCode is provided (REST-backed mode)
-const CLIENT_ID     = 'YOUR_CLIENT_ID';
-const CLIENT_SECRET = 'YOUR_CLIENT_SECRET';
+let allHotlists  = [];
+let messageId    = 0;
+const pending    = {};  // resolvers keyed by message id
 
-// ─────────────────────────────────────────────
-//  Auth + session state
-// ─────────────────────────────────────────────
-let bhRestToken = null;
-let restUrl     = null;
-let allHotlists = [];
+// ── post-robot style messaging to parent frame ──
+// Bullhorn uses post-robot; we replicate its envelope format so the
+// parent frame's already-loaded post-robot instance handles our messages.
+function bhRequest(method, data) {
+  return new Promise((resolve, reject) => {
+    const id = 'card_' + (++messageId);
+    const timeout = setTimeout(() => {
+      delete pending[id];
+      reject(new Error('Timeout waiting for Bullhorn response (' + method + ')'));
+    }, 10000);
 
-// ─────────────────────────────────────────────
-//  Bootstrap
-// ─────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  if (entityId) {
-    document.getElementById('entity-label').textContent = `Candidate #${entityId}`;
-  }
+    pending[id] = { resolve, reject, timeout };
 
-  // Try AppBridge first (simplest for custom cards); fall back to REST auth flow
-  if (window.parent !== window) {
-    tryAppBridge();
-  } else if (authCode) {
-    authenticateAndLoad();
-  } else {
-    showError('No entity context found. Open this card from a Bullhorn Candidate record.');
-  }
-});
-
-// ─────────────────────────────────────────────
-//  AppBridge path  (preferred for Custom Cards)
-//  Uses the logged-in user's session directly
-// ─────────────────────────────────────────────
-function tryAppBridge() {
-  try {
-    // Dynamically load AppBridge from the Bullhorn host
-    const script = document.createElement('script');
-    script.src = 'https://universal-app.bullhornstaffing.com/assets/app-bridge.js';
-    script.onload = () => initAppBridge();
-    script.onerror = () => {
-      // AppBridge script unavailable — fall through to REST auth if we have authCode
-      if (authCode) authenticateAndLoad();
-      else showError('AppBridge unavailable and no authCode provided.');
-    };
-    document.head.appendChild(script);
-  } catch (e) {
-    if (authCode) authenticateAndLoad();
-    else showError(e.message);
-  }
-}
-
-function initAppBridge() {
-  if (typeof AppBridge === 'undefined' && typeof window.AppBridge === 'undefined') {
-    if (authCode) { authenticateAndLoad(); return; }
-    showError('AppBridge not available in this context.');
-    return;
-  }
-
-  const AB = window.AppBridge || AppBridge;
-  AB.init().then(() => {
-    // Fetch hotlists via AppBridge httpGET — no auth token needed
-    loadViaAppBridge(AB);
-  }).catch(() => {
-    if (authCode) authenticateAndLoad();
-    else showError('AppBridge init failed.');
+    window.parent.postMessage({
+      type:   'postrobot_message',
+      name:   method,
+      id:     id,
+      data:   data,
+      origin: window.location.origin
+    }, '*');
   });
 }
 
-function loadViaAppBridge(AB) {
-  const candidateId = entityId;
-  if (!candidateId) { showError('No Candidate ID in URL.'); return; }
+// Listen for responses from parent
+window.addEventListener('message', (event) => {
+  const msg = event.data;
+  if (!msg) return;
 
-  // Query TearsheetMember to get all tearsheets this candidate belongs to
-  const query = `candidate.id:${candidateId}`;
-  const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
-  const url = `/query/TearsheetMember?where=candidate.id%3D${candidateId}&fields=${encodeURIComponent(fields)}&count=200&start=0`;
-
-  AB.httpGET({ relativeURL: url })
-    .then(resp => {
-      const data = resp.data || resp;
-      processResults(data);
-    })
-    .catch(err => {
-      // AppBridge call failed — try REST auth if available
-      if (authCode) authenticateAndLoad();
-      else showError('AppBridge request failed: ' + (err.message || JSON.stringify(err)));
-    });
-}
-
-// ─────────────────────────────────────────────
-//  REST Auth path  (used when authCode provided)
-// ─────────────────────────────────────────────
-async function authenticateAndLoad() {
-  try {
-    // Step 1: Exchange authCode for access_token
-    const tokenResp = await fetch(
-      `https://auth.bullhornstaffing.com/oauth/token?grant_type=authorization_code` +
-      `&client_id=${encodeURIComponent(CLIENT_ID)}` +
-      `&client_secret=${encodeURIComponent(CLIENT_SECRET)}` +
-      `&code=${encodeURIComponent(authCode)}`,
-      { method: 'POST' }
-    );
-    if (!tokenResp.ok) throw new Error('Token exchange failed (' + tokenResp.status + ')');
-    const tokenData = await tokenResp.json();
-    const accessToken = tokenData.access_token;
-
-    // Step 2: REST login
-    const loginResp = await fetch(
-      `https://rest.bullhornstaffing.com/rest-services/login?version=*&access_token=${encodeURIComponent(accessToken)}`,
-      { method: 'POST' }
-    );
-    if (!loginResp.ok) throw new Error('REST login failed (' + loginResp.status + ')');
-    const loginData = await loginResp.json();
-
-    bhRestToken = loginData.BhRestToken;
-    restUrl     = loginData.restUrl;
-
-    await loadData();
-
-  } catch (err) {
-    showError(err.message || 'Authentication error');
+  // post-robot response envelope
+  const ackId = msg.ack || (msg.data && msg.data.__id__) || msg.id;
+  if (ackId && pending[ackId]) {
+    clearTimeout(pending[ackId].timeout);
+    const { resolve, reject } = pending[ackId];
+    delete pending[ackId];
+    if (msg.error || (msg.data && msg.data.error)) {
+      reject(new Error(msg.error || msg.data.error));
+    } else {
+      resolve(msg.data !== undefined ? msg.data : msg);
+    }
+    return;
   }
-}
 
-// ─────────────────────────────────────────────
-//  Main data load  (REST token path)
-// ─────────────────────────────────────────────
+  // Also handle flat response where the parent echoes our id
+  if (msg.type === 'postrobot_message_response' && msg.id && pending[msg.id]) {
+    clearTimeout(pending[msg.id].timeout);
+    const { resolve, reject } = pending[msg.id];
+    delete pending[msg.id];
+    if (msg.error) reject(new Error(msg.error));
+    else resolve(msg.data);
+  }
+});
+
+// ── Bootstrap ──
+document.addEventListener('DOMContentLoaded', () => {
+  if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
+  loadData();
+});
+
 async function loadData() {
-  if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
+  if (!entityId) { showError('No Candidate EntityID found in URL.'); return; }
 
-  // Show loading state on refresh
   hideAll();
   document.getElementById('state-loading').style.display = 'flex';
   setBtnSpinning(true);
 
   try {
-    let data;
+    // First register with AppBridge (required handshake)
+    await bhRequest('register', {}).catch(() => {}); // ignore if already registered
 
-    if (bhRestToken && restUrl) {
-      // REST token available — call directly
-      const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
-      const url = `${restUrl}query/TearsheetMember?where=candidate.id%3D${entityId}` +
-                  `&fields=${encodeURIComponent(fields)}&count=200&start=0` +
-                  `&BhRestToken=${encodeURIComponent(bhRestToken)}`;
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error('REST query failed (' + resp.status + ')');
-      data = await resp.json();
-    } else {
-      // No token yet — re-trigger AppBridge
-      tryAppBridge();
-      return;
-    }
+    // Query TearsheetMember for this candidate
+    const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
+    const url = '/query/TearsheetMember?where=candidate.id%3D' + entityId +
+                '&fields=' + encodeURIComponent(fields) + '&count=200&start=0';
 
-    processResults(data);
+    const resp = await bhRequest('httpGET', { relativeURL: url });
+    processResults(resp);
 
   } catch (err) {
-    showError(err.message);
+    showError(err.message || 'Failed to load data');
   } finally {
     setBtnSpinning(false);
   }
 }
 
-// ─────────────────────────────────────────────
-//  Process + render
-// ─────────────────────────────────────────────
 function processResults(data) {
   hideAll();
+  // data may be the raw response object or wrapped
+  const members = (data && data.data) ? data.data : (Array.isArray(data) ? data : []);
 
-  const members = data.data || data;
-  if (!Array.isArray(members) || members.length === 0) {
+  if (!members.length) {
     document.getElementById('state-empty').style.display = 'flex';
     updateTimestamp();
     return;
   }
 
-  // Dedupe by tearsheet ID (a candidate may appear multiple times on same sheet)
   const seen = new Set();
   allHotlists = members
     .filter(m => {
@@ -552,126 +236,80 @@ function processResults(data) {
 
   document.getElementById('count-badge').textContent = allHotlists.length;
   document.getElementById('count-badge').classList.remove('hidden');
-
   renderList(allHotlists);
   updateTimestamp();
 }
 
 function renderList(items) {
-  const listEl     = document.getElementById('hotlist-list');
-  const noResults  = document.getElementById('no-results');
-  const stateList  = document.getElementById('state-list');
+  const listEl    = document.getElementById('hotlist-list');
+  const noResults = document.getElementById('no-results');
+  const stateList = document.getElementById('state-list');
 
   listEl.innerHTML = '';
   stateList.style.display = 'block';
   noResults.style.display = 'none';
 
-  if (items.length === 0) {
-    noResults.style.display = 'block';
-    return;
-  }
+  if (!items.length) { noResults.style.display = 'block'; return; }
 
   items.forEach((ts, idx) => {
-    const ownerName = ts.owner
-      ? `${ts.owner.firstName || ''} ${ts.owner.lastName || ''}`.trim()
-      : 'Unknown owner';
-
-    const dateStr = ts.dateAdded
-      ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' })
-      : '';
-
-    const metaParts = [ownerName, dateStr].filter(Boolean);
+    const ownerName = ts.owner ? (ts.owner.firstName + ' ' + ts.owner.lastName).trim() : 'Unknown';
+    const dateStr   = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
+    const meta      = [ownerName, dateStr].filter(Boolean).join(' · ');
 
     const item = document.createElement('div');
     item.className = 'hotlist-item';
-    item.style.animationDelay = `${idx * 30}ms`;
-    item.innerHTML = `
-      <div class="hotlist-icon">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-             stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-        </svg>
-      </div>
-      <div class="hotlist-info">
-        <div class="hotlist-name" title="${escHtml(ts.name)}">${escHtml(ts.name)}</div>
-        ${metaParts.length ? `<div class="hotlist-meta">${escHtml(metaParts.join(' · '))}</div>` : ''}
-      </div>
-      <div class="hotlist-actions">
-        ${ts.isPrivate ? `<span class="private-tag">Private</span>` : ''}
-        ${ts.id ? `<a class="btn-link" onclick="openTearsheet(${ts.id})" title="Open in Bullhorn">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-            <polyline points="15 3 21 3 21 9"/>
-            <line x1="10" y1="14" x2="21" y2="3"/>
-          </svg>
-          Open
-        </a>` : ''}
-      </div>
-    `;
+    item.style.animationDelay = (idx * 30) + 'ms';
+    item.innerHTML =
+      '<div class="hotlist-icon">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+      '</div>' +
+      '<div class="hotlist-info">' +
+        '<div class="hotlist-name" title="' + esc(ts.name) + '">' + esc(ts.name) + '</div>' +
+        (meta ? '<div class="hotlist-meta">' + esc(meta) + '</div>' : '') +
+      '</div>' +
+      '<div class="hotlist-actions">' +
+        (ts.isPrivate ? '<span class="private-tag">Private</span>' : '') +
+        (ts.id ? '<button class="btn-link" onclick="openTearsheet(' + ts.id + ')" title="Open in Bullhorn">' +
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>' +
+          'Open</button>' : '') +
+      '</div>';
     listEl.appendChild(item);
   });
 }
 
-// ─────────────────────────────────────────────
-//  Open tearsheet in Bullhorn via AppBridge
-// ─────────────────────────────────────────────
 function openTearsheet(id) {
-  // Use AppBridge to navigate to the tearsheet record in Bullhorn
-  const AB = window.AppBridge || (typeof AppBridge !== 'undefined' ? AppBridge : null);
-  if (AB && AB.openEntityTab) {
-    AB.openEntityTab({ type: 'Tearsheet', id });
-    return;
-  }
-  // Fallback: open in parent frame via postMessage / direct URL
-  const bhBase = currentBhUrl ? `https://${currentBhUrl}` : 'https://app.bullhornstaffing.com';
-  window.open(`${bhBase}/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=${id}`, '_blank');
+  bhRequest('open', { type: 'Tearsheet', id: id }).catch(() => {
+    const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
+    window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
+  });
 }
 
-// ─────────────────────────────────────────────
-//  Search / filter
-// ─────────────────────────────────────────────
 function filterList() {
   const q = document.getElementById('search-input').value.toLowerCase().trim();
-  if (!q) { renderList(allHotlists); return; }
-  renderList(allHotlists.filter(ts => ts.name.toLowerCase().includes(q)));
+  renderList(q ? allHotlists.filter(ts => ts.name.toLowerCase().includes(q)) : allHotlists);
 }
 
-// ─────────────────────────────────────────────
-//  UI helpers
-// ─────────────────────────────────────────────
 function hideAll() {
   ['state-loading','state-error','state-list','state-empty'].forEach(id => {
     document.getElementById(id).style.display = 'none';
   });
 }
-
 function showError(msg) {
-  hideAll();
-  setBtnSpinning(false);
+  hideAll(); setBtnSpinning(false);
   document.getElementById('state-error').style.display = 'flex';
   document.getElementById('error-msg').textContent = msg;
 }
-
 function setBtnSpinning(on) {
   const btn = document.getElementById('btn-refresh');
   btn.classList.toggle('spinning', on);
   btn.disabled = on;
 }
-
 function updateTimestamp() {
-  const now = new Date();
   document.getElementById('last-updated').textContent =
-    'Updated ' + now.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+    'Updated ' + new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
 }
-
-function escHtml(str) {
-  return String(str || '')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>
