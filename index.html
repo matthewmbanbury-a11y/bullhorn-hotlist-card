@@ -89,6 +89,7 @@
 </div>
 
 <script>
+// v12
 function prSend(name, data) {
   postRobot.CONFIG.LOG_LEVEL = 'debug';
   return postRobot.send(window.parent, name, data || {});
@@ -121,7 +122,16 @@ async function loadData() {
       + '&count=200&start=0';
 
     var result = await prSend('httpGET', { relativeURL: relativeURL });
-    processResults(result);
+
+    // result.data = { start, count, data: [...tearsheets...], error }
+    var rows = [];
+    try {
+      var inner = result.data;
+      if (inner && Array.isArray(inner.data)) rows = inner.data;
+    } catch(e) {}
+
+    console.log('[v12] rows found:', rows.length);
+    processResults(rows);
   } catch(err) {
     var msg = 'Failed to load';
     try { if (err && err.message) msg = err.message; } catch(e) {}
@@ -131,20 +141,8 @@ async function loadData() {
   }
 }
 
-function extractRows(result) {
-  try {
-    // Post-robot wraps response: result -> .data -> { start, count, data: [...], error }
-    var a = result && result.data;         // { start, count, data: [...], error }
-    var b = a && a.data;                   // [ ...tearsheets... ]
-    if (Array.isArray(b)) return b;
-    if (Array.isArray(a)) return a;
-  } catch(e) {}
-  return [];
-}
-
-function processResults(result) {
+function processResults(rows) {
   hideAll();
-  var rows = extractRows(result);
 
   if (!rows.length) {
     document.getElementById('state-empty').style.display = 'flex';
