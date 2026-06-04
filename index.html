@@ -127,8 +127,10 @@ async function loadData() {
     console.log('[HotlistCard] httpGET result:', JSON.stringify(result));
     processResults(result.data);
   } catch(err) {
-    console.log('[HotlistCard] error:', err);
-    showError(err.message || 'Failed to load');
+    var msg = 'Failed to load';
+    try { msg = err.message || msg; } catch(e) {}
+    console.log('[HotlistCard] error:', String(err));
+    showError(msg);
   } finally {
     setBtnSpinning(false);
   }
