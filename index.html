@@ -125,13 +125,15 @@ async function loadData() {
   try {
     await prSend('register', { name: 'hotlists-card', version: '1.0' }).catch(function(){});
 
-    var fields = 'id,tearsheets(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
-    var relativeURL = 'entity/Candidate/' + entityId + '?fields=' + encodeURIComponent(fields);
+    // Query Tearsheet entity, filtered by candidate membership
+    var fields = 'id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded';
+    var relativeURL = 'query/Tearsheet?where=' + encodeURIComponent('candidates.id=' + entityId)
+      + '&fields=' + encodeURIComponent(fields)
+      + '&count=200&start=0';
 
     var result = await prSend('httpGET', { relativeURL: relativeURL });
     var payload = unwrap(result);
 
-    // DEBUG: log the full raw payload
     var rawTxt = '';
     try { rawTxt = JSON.stringify(payload); } catch(e) { rawTxt = String(payload); }
     console.log('[HotlistCard] RAW payload:', rawTxt);
@@ -151,15 +153,12 @@ async function loadData() {
 function processResults(payload, rawTxt) {
   hideAll();
 
-  var inner = payload && payload.data ? payload.data : payload;
-  var tsAssoc = inner && inner.tearsheets ? inner.tearsheets : null;
   var rows = [];
-  if (tsAssoc && Array.isArray(tsAssoc.data)) rows = tsAssoc.data;
-  else if (Array.isArray(tsAssoc)) rows = tsAssoc;
+  if (payload && payload.data && Array.isArray(payload.data)) rows = payload.data;
+  else if (Array.isArray(payload)) rows = payload;
 
   if (!rows.length) {
     document.getElementById('state-empty').style.display = 'flex';
-    // Show raw payload in the empty state so we can see the shape
     var ed = document.getElementById('empty-debug');
     if (rawTxt) { ed.textContent = rawTxt; ed.style.display = 'block'; }
     updateTimestamp();
