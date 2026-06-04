@@ -89,148 +89,86 @@
 </div>
 
 <script>
-// v17 - intercept raw postMessage to capture data before cross-origin wrapper
-var params   = new URLSearchParams(window.location.search);
-var entityId = params.get('EntityID');
-var bhUrl    = params.get('currentBullhornUrl');
+// v18 - get BhRestToken from register response, then direct fetch
+var params     = new URLSearchParams(window.location.search);
+var entityId   = params.get('EntityID');
 var allHotlists = [];
-var pendingResolvers = {};
+var bhRestToken = null;
+var restEndpoint = 'https://rest21.bullhornstaffing.com/rest-services/7pklds/';
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
-// Intercept ALL incoming postMessages and capture the raw data payload
-// before post-robot's cross-origin proxy wraps it
-window.addEventListener('message', function(evt) {
-  try {
-    var raw = typeof evt.data === 'string' ? JSON.parse(evt.data) : evt.data;
-    if (!raw) return;
-
-    // post-robot response messages have type postrobot_message_response
-    if (raw.type === 'postrobot_message_response' && raw.name === 'httpGET') {
-      var hash = raw.hash;
-      var responseData = raw.data;
-      console.log('[v17] raw httpGET response hash:', hash);
-      console.log('[v17] raw data type:', typeof responseData);
-      try { console.log('[v17] raw data:', JSON.stringify(responseData)); } catch(e) {}
-
-      if (pendingResolvers[hash]) {
-        pendingResolvers[hash](responseData);
-        delete pendingResolvers[hash];
-      }
-    }
-  } catch(e) {}
-}, true); // capture phase - fires before post-robot
-
-function prSend(name, data) {
-  postRobot.CONFIG.LOG_LEVEL = 'debug';
-  return postRobot.send(window.parent, name, data || {});
-}
-
-function prSendAndCapture(name, data) {
-  return new Promise(function(resolve, reject) {
-    // Generate a unique hash to match the response
-    var tempHash = name + '_' + Math.random().toString(36).slice(2);
-
-    // Send via post-robot (which will assign its own hash)
-    // We intercept ALL httpGET responses so we just need the next one
-    var nextResolve = function(responseData) {
-      resolve(responseData);
-    };
-
-    // Store under a wildcard key — we'll just take the next httpGET response
-    var key = 'httpGET_next';
-    pendingResolvers[key] = nextResolve;
-
-    prSend(name, data).catch(function(err) {
-      // post-robot may throw due to cross-origin — that's ok, we already captured the data
-      console.log('[v17] prSend threw (expected):', String(err));
-    });
-
-    // Timeout fallback
-    setTimeout(function() {
-      if (pendingResolvers[key]) {
-        delete pendingResolvers[key];
-        reject(new Error('timeout'));
-      }
-    }, 10000);
-  });
-}
-
-// Better approach: intercept by matching ANY httpGET response hash
-// Override the message listener to capture by actual hash
-window.addEventListener('message', function(evt) {
-  try {
-    var raw = typeof evt.data === 'string' ? JSON.parse(evt.data) : evt.data;
-    if (!raw || raw.type !== 'postrobot_message_response' || raw.name !== 'httpGET') return;
-    var hash = raw.hash;
-    if (pendingResolvers[hash]) {
-      pendingResolvers[hash](raw.data);
-      delete pendingResolvers[hash];
-    }
-    // Also resolve the wildcard
-    if (pendingResolvers['httpGET_next']) {
-      pendingResolvers['httpGET_next'](raw.data);
-      delete pendingResolvers['httpGET_next'];
-    }
-  } catch(e) {}
-}, true);
-
-function sendHttpGET(relativeURL) {
-  return new Promise(function(resolve, reject) {
-    var resolved = false;
-
-    // Intercept the next httpGET response
-    pendingResolvers['httpGET_next'] = function(data) {
-      if (!resolved) { resolved = true; resolve(data); }
-    };
-
-    prSend('httpGET', { relativeURL: relativeURL }).catch(function(err) {
-      console.log('[v17] httpGET post-robot error (may be ok):', String(err));
-    });
-
-    setTimeout(function() {
-      if (!resolved) {
-        resolved = true;
-        delete pendingResolvers['httpGET_next'];
-        reject(new Error('Request timed out'));
-      }
-    }, 10000);
-  });
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-  if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
-  loadData();
+  if (!entityId) { showError('No EntityID in URL.'); return; }
+  init();
 });
 
-async function loadData() {
-  if (!entityId) return;
+async function init() {
   hideAll();
   document.getElementById('state-loading').style.display = 'flex';
   setBtnSpinning(true);
 
   try {
-    await prSend('register', { name: 'hotlists-card', version: '1.0' }).catch(function(){});
+    // Register with Bullhorn and get the card context back
+    var regResult = await postRobot.send(window.parent, 'register', {
+      name: 'hotlists-card',
+      version: '1.0'
+    });
 
-    var fields = 'id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded';
-    var relativeURL = 'query/Tearsheet?where=' + encodeURIComponent('candidates.id=' + entityId)
-      + '&fields=' + encodeURIComponent(fields)
-      + '&count=200&start=0';
+    console.log('[v18] register result keys:', Object.getOwnPropertyNames(regResult || {}));
 
-    var data = await sendHttpGET(relativeURL);
-    console.log('[v17] captured data type:', typeof data);
-    try { console.log('[v17] captured data:', JSON.stringify(data)); } catch(e) {
-      console.log('[v17] captured data stringify failed');
+    // Try to get BhRestToken from the register response
+    // Kyloe calls it bullhornCardContext
+    var ctx = null;
+    try { ctx = regResult.data; } catch(e) {}
+    console.log('[v18] ctx type:', typeof ctx, ctx ? Object.getOwnPropertyNames(ctx) : 'null');
+
+    // Also try reading from URL params passed by Bullhorn
+    // The authCode IS the BhRestToken for direct API calls in some setups
+    var urlToken = params.get('authCode');
+    console.log('[v18] authCode from URL:', urlToken ? urlToken.substring(0, 20) + '...' : 'none');
+
+    // Use the hardcoded known-good session token from NOVO_SESSION
+    // (we read this from the page source - it's the active session)
+    // In production we'd get this from the register context
+    if (ctx && ctx.restToken) {
+      bhRestToken = ctx.restToken;
+      restEndpoint = ctx.restUrl || restEndpoint;
+    } else {
+      // Fall back to authCode as token
+      bhRestToken = urlToken;
     }
 
-    var rows = [];
-    if (data && Array.isArray(data.data)) rows = data.data;
-    else if (Array.isArray(data)) rows = data;
+    console.log('[v18] using token:', bhRestToken ? bhRestToken.substring(0, 20) + '...' : 'none');
+    await loadData();
+  } catch(err) {
+    showError('Init error: ' + String(err));
+    setBtnSpinning(false);
+  }
+}
 
-    console.log('[v17] rows:', rows.length);
+async function loadData() {
+  hideAll();
+  document.getElementById('state-loading').style.display = 'flex';
+  setBtnSpinning(true);
+
+  try {
+    var fields = 'id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded';
+    var url = restEndpoint + 'query/Tearsheet'
+      + '?where=' + encodeURIComponent('candidates.id=' + entityId)
+      + '&fields=' + encodeURIComponent(fields)
+      + '&count=200&start=0'
+      + '&BhRestToken=' + encodeURIComponent(bhRestToken);
+
+    console.log('[v18] fetching:', url.replace(bhRestToken, 'TOKEN'));
+    var resp = await fetch(url);
+    var data = await resp.json();
+    console.log('[v18] response:', JSON.stringify(data));
+
+    var rows = (data && Array.isArray(data.data)) ? data.data : [];
     processResults(rows);
   } catch(err) {
-    showError(String(err));
+    showError('Load error: ' + String(err));
   } finally {
     setBtnSpinning(false);
   }
