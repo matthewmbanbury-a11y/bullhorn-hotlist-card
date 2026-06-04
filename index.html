@@ -47,6 +47,7 @@
     .no-results { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
     .card-footer { padding: 6px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
   </style>
+<script src="https://cdn.jsdelivr.net/gh/krakenjs/post-robot@7da06445/dist/post-robot.js"></script>
 </head>
 <body>
 <div class="card">
@@ -88,64 +89,26 @@
 </div>
 
 <script>
-// ── No post-robot library loaded ──
-// We send raw postMessage in post-robot's envelope format,
-// and capture the response BEFORE post-robot in the parent can consume it
-// by using a capturing listener on our own window.
+// ── Use post-robot to communicate with the overview iframe (window.parent) ──
+// The overview iframe relays our requests to the fullpage, just like Kyloe does.
+// We use the same post-robot version as Bullhorn so the handshake works.
+
+function prSend(name, data) {
+  postRobot.CONFIG.LOG_LEVEL = 'debug';
+  console.log('[HotlistCard] sending', name, 'to window.parent');
+  return postRobot.send(window.parent, name, data || {});
+}
 
 const params   = new URLSearchParams(window.location.search);
 const entityId = params.get('EntityID');
 const bhUrl    = params.get('currentBullhornUrl');
 
 let allHotlists = [];
-let msgCounter  = 0;
-const pending   = {}; // hash -> { resolve, reject, timer }
-
-// ── Intercept ALL incoming messages at capture phase (fires before bubble) ──
-// This means we see the response before Bullhorn's post-robot listener does
-window.addEventListener('message', function(evt) {
-  const msg = evt.data;
-  if (!msg || msg.type !== 'postrobot_message_response') return;
-
-  const hash = msg.hash;
-  if (hash && pending[hash]) {
-    clearTimeout(pending[hash].timer);
-    const { resolve, reject } = pending[hash];
-    delete pending[hash];
-    if (msg.ack === 'error') {
-      reject(new Error(msg.data ? JSON.stringify(msg.data) : 'AppBridge error'));
-    } else {
-      resolve(msg.data);
-    }
-  }
-}, true); // true = capture phase — fires before any other listener
-
-// ── Send a post-robot style message and wait for its response ──
-function prSend(name, data) {
-  return new Promise(function(resolve, reject) {
-    const id   = ++msgCounter;
-    const hash = name + '_' + Math.random().toString(36).slice(2) + id;
-
-    const timer = setTimeout(function() {
-      delete pending[hash];
-      reject(new Error('Timeout waiting for Bullhorn response (' + name + ')'));
-    }, 10000);
-
-    pending[hash] = { resolve, reject, timer };
-
-    window.parent.postMessage({
-      type:   'postrobot_message_request',
-      hash:   hash,
-      name:   name,
-      data:   data || {},
-      domain: '*'
-    }, '*');
-  });
-}
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
 document.addEventListener('DOMContentLoaded', function() {
+  console.log('[HotlistCard] loaded, postRobot =', typeof postRobot, 'entityId =', entityId);
   if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
   loadData();
 });
@@ -166,8 +129,8 @@ async function loadData() {
       + '&fields=' + encodeURIComponent(fields)
       + '&count=200&start=0';
 
-    const data = await prSend('httpGET', { relativeURL: relativeURL });
-    processResults(data);
+    const result = await prSend('httpGET', { relativeURL: relativeURL });
+    processResults(result.data);
   } catch(err) {
     showError(err.message || 'Failed to load');
   } finally {
