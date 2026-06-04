@@ -88,56 +88,45 @@
   </div>
 </div>
 
-<!-- Load post-robot from unpkg — same library Bullhorn uses internally -->
-<script src="https://unpkg.com/post-robot/dist/post-robot.js"></script>
-
 <script>
-const params   = new URLSearchParams(window.location.search);
-const entityId = params.get('EntityID');
-const bhUrl    = params.get('currentBullhornUrl');
+// ── Read ALL params Bullhorn passes in the URL ──
+const params      = new URLSearchParams(window.location.search);
+const entityId    = params.get('EntityID');
+const bhRestToken = params.get('BhRestToken');
+const restUrl     = params.get('restUrl');        // e.g. https://rest21.bullhornstaffing.com/rest-services/7PKLDS/
+const bhUrl       = params.get('currentBullhornUrl');
+
 let allHotlists = [];
-let bridge = null;
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
-// ── Use post-robot to talk to Bullhorn's parent frame ──
-async function initBridge() {
-  // post-robot is now loaded as window.postRobot
-  const pr = window.postRobot;
-
-  // Step 1: register
-  await pr.send(window.parent, 'register', {
-    name: 'hotlists-card',
-    version: '1.0.0'
-  });
-
-  // Step 2: return a send function for httpGET
-  return function httpGET(relativeURL) {
-    return pr.send(window.parent, 'httpGET', { relativeURL });
-  };
-}
-
 document.addEventListener('DOMContentLoaded', () => {
-  if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
+  if (!entityId)    { showError('No Candidate EntityID in URL.'); return; }
+  if (!bhRestToken) { showError('No BhRestToken in URL. Ensure the card is opened from a Candidate record.'); return; }
+  if (!restUrl)     { showError('No restUrl in URL.'); return; }
   loadData();
 });
 
 async function loadData() {
+  if (!entityId || !bhRestToken || !restUrl) return;
+
   hideAll();
   document.getElementById('state-loading').style.display = 'flex';
   setBtnSpinning(true);
 
   try {
-    if (!bridge) bridge = await initBridge();
-
     const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
-    const url = '/query/TearsheetMember?where=candidate.id%3D' + entityId +
-                '&fields=' + encodeURIComponent(fields) + '&count=200&start=0';
+    const url = restUrl + 'query/TearsheetMember'
+      + '?where=' + encodeURIComponent('candidate.id=' + entityId)
+      + '&fields=' + encodeURIComponent(fields)
+      + '&count=200&start=0'
+      + '&BhRestToken=' + encodeURIComponent(bhRestToken);
 
-    const result = await bridge(url);
-    // post-robot wraps the response in result.data
-    processResults(result.data);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('REST query failed (' + resp.status + ')');
+    const data = await resp.json();
 
+    processResults(data);
   } catch (err) {
     showError(err.message || 'Failed to load data');
   } finally {
@@ -147,7 +136,7 @@ async function loadData() {
 
 function processResults(data) {
   hideAll();
-  const members = (data && data.data) ? data.data : (Array.isArray(data) ? data : []);
+  const members = (data && data.data) ? data.data : [];
 
   if (!members.length) {
     document.getElementById('state-empty').style.display = 'flex';
@@ -176,10 +165,10 @@ function renderList(items) {
   noResults.style.display = items.length ? 'none' : 'block';
 
   items.forEach((ts, idx) => {
-    const owner   = ts.owner ? (ts.owner.firstName + ' ' + ts.owner.lastName).trim() : 'Unknown';
-    const date    = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
-    const meta    = [owner, date].filter(Boolean).join(' · ');
-    const item    = document.createElement('div');
+    const owner = ts.owner ? (ts.owner.firstName + ' ' + ts.owner.lastName).trim() : 'Unknown';
+    const date  = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
+    const meta  = [owner, date].filter(Boolean).join(' · ');
+    const item  = document.createElement('div');
     item.className = 'hotlist-item';
     item.style.animationDelay = (idx * 30) + 'ms';
     item.innerHTML =
@@ -195,11 +184,8 @@ function renderList(items) {
 }
 
 function openTearsheet(id) {
-  window.postRobot.send(window.parent, 'open', { type: 'Tearsheet', id })
-    .catch(() => {
-      const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
-      window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
-    });
+  const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
+  window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
 }
 
 function filterList() {
