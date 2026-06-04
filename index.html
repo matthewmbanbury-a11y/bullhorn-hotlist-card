@@ -125,7 +125,7 @@ async function loadData() {
 
     // Query TearsheetMember
     const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
-    const relativeURL = 'query/TearsheetMember?where=' + encodeURIComponent('candidate.id=' + entityId)
+    const relativeURL = 'query/TearsheetMember?where=' + encodeURIComponent('candidate(id)=' + entityId)
       + '&fields=' + encodeURIComponent(fields)
       + '&count=200&start=0';
 
