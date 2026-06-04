@@ -126,9 +126,17 @@ async function loadData() {
 
     var result = await prSend('httpGET', { relativeURL: relativeURL });
 
-    try { console.log('[HC]', JSON.stringify(result)); } catch(e) { console.log('[HC] err', String(e)); }
+    // Safely read result.data without serializing the whole post-robot wrapper
+    var safePayload = null;
+    try { safePayload = result.data; } catch(e) {}
 
-    processResults(result);
+    try {
+      console.log('[HC] count:', safePayload && safePayload.count);
+      console.log('[HC] rows:', safePayload && safePayload.data && safePayload.data.length);
+      console.log('[HC] first:', JSON.stringify(safePayload && safePayload.data && safePayload.data[0]));
+    } catch(e) {}
+
+    processResults(safePayload);
   } catch(err) {
     var msg = 'Failed to load';
     var detail = '';
@@ -140,22 +148,18 @@ async function loadData() {
   }
 }
 
-function extractRows(result) {
-  try {
-    var lvl1 = (result && result.data !== undefined) ? result.data : result;
-    var lvl2 = (lvl1 && lvl1.data !== undefined) ? lvl1.data : lvl1;
-    if (Array.isArray(lvl2)) return lvl2;
-    if (Array.isArray(lvl1)) return lvl1;
-  } catch(e) {}
+function extractRows(data) {
+  if (data && Array.isArray(data.data)) return data.data;
+  if (Array.isArray(data)) return data;
   return [];
 }
 
-function processResults(result) {
+function processResults(data) {
   hideAll();
-  var rows = extractRows(result);
+  var rows = extractRows(data);
 
   var rawTxt = '';
-  try { rawTxt = JSON.stringify(result); } catch(e) { rawTxt = String(result); }
+  try { rawTxt = JSON.stringify(data); } catch(e) { rawTxt = 'count=' + (data && data.count) + ' rows=' + (data && data.data && data.data.length); }
 
   if (!rows.length) {
     document.getElementById('state-empty').style.display = 'flex';
