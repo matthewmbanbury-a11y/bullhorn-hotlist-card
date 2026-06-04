@@ -87,38 +87,65 @@
   </div>
 </div>
 
-<!-- Exact same post-robot version Bullhorn loads -->
-<script src="https://cdn.jsdelivr.net/gh/krakenjs/post-robot@7da06445/dist/post-robot.js"></script>
-
 <script>
+// ── No post-robot library loaded ──
+// We send raw postMessage in post-robot's envelope format,
+// and capture the response BEFORE post-robot in the parent can consume it
+// by using a capturing listener on our own window.
+
 const params   = new URLSearchParams(window.location.search);
 const entityId = params.get('EntityID');
 const bhUrl    = params.get('currentBullhornUrl');
 
 let allHotlists = [];
-let bhRestToken = null;
-let restUrl     = null;
+let msgCounter  = 0;
+const pending   = {}; // hash -> { resolve, reject, timer }
+
+// ── Intercept ALL incoming messages at capture phase (fires before bubble) ──
+// This means we see the response before Bullhorn's post-robot listener does
+window.addEventListener('message', function(evt) {
+  const msg = evt.data;
+  if (!msg || msg.type !== 'postrobot_message_response') return;
+
+  const hash = msg.hash;
+  if (hash && pending[hash]) {
+    clearTimeout(pending[hash].timer);
+    const { resolve, reject } = pending[hash];
+    delete pending[hash];
+    if (msg.ack === 'error') {
+      reject(new Error(msg.data ? JSON.stringify(msg.data) : 'AppBridge error'));
+    } else {
+      resolve(msg.data);
+    }
+  }
+}, true); // true = capture phase — fires before any other listener
+
+// ── Send a post-robot style message and wait for its response ──
+function prSend(name, data) {
+  return new Promise(function(resolve, reject) {
+    const id   = ++msgCounter;
+    const hash = name + '_' + Math.random().toString(36).slice(2) + id;
+
+    const timer = setTimeout(function() {
+      delete pending[hash];
+      reject(new Error('Timeout waiting for Bullhorn response (' + name + ')'));
+    }, 10000);
+
+    pending[hash] = { resolve, reject, timer };
+
+    window.parent.postMessage({
+      type:   'postrobot_message_request',
+      hash:   hash,
+      name:   name,
+      data:   data || {},
+      domain: '*'
+    }, 'https://app.bullhornstaffing.com');
+  });
+}
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
-// ── Use post-robot to request httpGET via AppBridge ──
-// post-robot is now the SAME version as Bullhorn's, so they can communicate
-async function appBridgeGET(relativeURL) {
-  // First register (handshake)
-  await postRobot.send(window.parent, 'register', {
-    name: 'hotlists-card',
-    version: '1.0'
-  }).catch(() => {}); // ignore if already registered
-
-  // Then do the GET
-  const result = await postRobot.send(window.parent, 'httpGET', {
-    relativeURL: relativeURL
-  });
-
-  return result.data;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
   if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
   loadData();
 });
@@ -130,15 +157,19 @@ async function loadData() {
   setBtnSpinning(true);
 
   try {
+    // Handshake first
+    await prSend('register', { name: 'hotlists-card', version: '1.0' }).catch(function(){});
+
+    // Query TearsheetMember
     const fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
     const relativeURL = '/query/TearsheetMember?where=' + encodeURIComponent('candidate.id=' + entityId)
       + '&fields=' + encodeURIComponent(fields)
       + '&count=200&start=0';
 
-    const data = await appBridgeGET(relativeURL);
+    const data = await prSend('httpGET', { relativeURL: relativeURL });
     processResults(data);
-  } catch (err) {
-    showError(err.message || 'Failed to load data');
+  } catch(err) {
+    showError(err.message || 'Failed to load');
   } finally {
     setBtnSpinning(false);
   }
@@ -146,7 +177,7 @@ async function loadData() {
 
 function processResults(data) {
   hideAll();
-  const raw = (data && data.data) ? data.data.map(m => m.tearsheet).filter(Boolean) : [];
+  const raw = (data && data.data) ? data.data.map(function(m){ return m.tearsheet; }).filter(Boolean) : [];
 
   if (!raw.length) {
     document.getElementById('state-empty').style.display = 'flex';
@@ -156,8 +187,8 @@ function processResults(data) {
 
   const seen = new Set();
   allHotlists = raw
-    .filter(ts => { if (seen.has(ts.id)) return false; seen.add(ts.id); return true; })
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .filter(function(ts){ if (seen.has(ts.id)) return false; seen.add(ts.id); return true; })
+    .sort(function(a, b){ return a.name.localeCompare(b.name); });
 
   document.getElementById('count-badge').textContent = allHotlists.length;
   document.getElementById('count-badge').classList.remove('hidden');
@@ -173,7 +204,7 @@ function renderList(items) {
   stateList.style.display = 'block';
   noResults.style.display = items.length ? 'none' : 'block';
 
-  items.forEach((ts, idx) => {
+  items.forEach(function(ts, idx) {
     const owner = ts.owner ? (ts.owner.firstName + ' ' + ts.owner.lastName).trim() : 'Unknown';
     const date  = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
     const meta  = [owner, date].filter(Boolean).join(' · ');
@@ -193,7 +224,7 @@ function renderList(items) {
 }
 
 function openTearsheet(id) {
-  postRobot.send(window.parent, 'open', { type: 'Tearsheet', id: id }).catch(() => {
+  prSend('open', { type: 'Tearsheet', id: id }).catch(function() {
     const base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
     window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
   });
@@ -201,11 +232,11 @@ function openTearsheet(id) {
 
 function filterList() {
   const q = document.getElementById('search-input').value.toLowerCase().trim();
-  renderList(q ? allHotlists.filter(ts => ts.name.toLowerCase().includes(q)) : allHotlists);
+  renderList(q ? allHotlists.filter(function(ts){ return ts.name.toLowerCase().includes(q); }) : allHotlists);
 }
 
 function hideAll() {
-  ['state-loading','state-error','state-list','state-empty'].forEach(id => document.getElementById(id).style.display = 'none');
+  ['state-loading','state-error','state-list','state-empty'].forEach(function(id){ document.getElementById(id).style.display = 'none'; });
 }
 function showError(msg) {
   hideAll(); setBtnSpinning(false);
