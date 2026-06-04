@@ -136,18 +136,18 @@ async function loadData() {
 
 function processResults(data) {
   hideAll();
-  const members = (data && data.data) ? data.data : [];
+  // query/TearsheetMember returns { data: [ { tearsheet: {...} }, ... ] }
+  const raw = (data && data.data) ? data.data.map(m => m.tearsheet).filter(Boolean) : [];
 
-  if (!members.length) {
+  if (!raw.length) {
     document.getElementById('state-empty').style.display = 'flex';
     updateTimestamp();
     return;
   }
 
   const seen = new Set();
-  allHotlists = members
-    .filter(m => { const ts = m.tearsheet; if (!ts || seen.has(ts.id)) return false; seen.add(ts.id); return true; })
-    .map(m => m.tearsheet)
+  allHotlists = raw
+    .filter(ts => { if (seen.has(ts.id)) return false; seen.add(ts.id); return true; })
     .sort((a, b) => a.name.localeCompare(b.name));
 
   document.getElementById('count-badge').textContent = allHotlists.length;
