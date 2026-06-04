@@ -5,237 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Candidate Hotlists</title>
   <style>
-    :root {
-      --bg: #f4f5f7; --surface: #ffffff; --border: #dde1e7;
-      --accent: #4a90d9; --accent-dark: #2f6fad; --accent-light: #e8f2fc;
-      --text-primary: #1a2533; --text-secondary: #5c6878; --text-muted: #9aa3af;
-      --red: #e74c3c; --radius: 6px;
-      --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { height: 100%; background: var(--bg); font-family: var(--font); font-size: 13px; color: var(--text-primary); overflow: hidden; }
-    .card { display: flex; flex-direction: column; height: 100vh; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
-    .badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; }
-    .badge.hidden { display: none; }
-    .btn-refresh { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text-secondary); font-size: 12px; cursor: pointer; transition: all .15s; }
-    .btn-refresh:hover { background: var(--accent-light); border-color: var(--accent); color: var(--accent-dark); }
-    .btn-refresh:disabled { opacity: .5; cursor: not-allowed; }
-    .spinning svg { animation: spin .7s linear infinite; }
-    .search-wrap { padding: 8px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .search-input { width: 100%; padding: 5px 10px 5px 30px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 12px; outline: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: 9px center; }
-    .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(74,144,217,.15); background-color: var(--surface); }
-    .card-body { flex: 1; overflow-y: auto; padding: 8px 14px 14px; }
-    .state { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px 20px; text-align: center; }
-    .state-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-    .state-sub { font-size: 12px; color: var(--text-muted); max-width: 300px; word-break: break-word; }
-    .spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .list { display: flex; flex-direction: column; gap: 6px; }
-    .hotlist-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); transition: all .15s; animation: fadeIn .2s ease both; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; } }
-    .hotlist-item:hover { border-color: var(--accent); background: var(--accent-light); }
-    .hotlist-icon { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: var(--accent-light); display: flex; align-items: center; justify-content: center; }
-    .hotlist-info { flex: 1; min-width: 0; }
-    .hotlist-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hotlist-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .hotlist-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
-    .btn-link { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--accent-dark); font-size: 11px; font-weight: 500; cursor: pointer; transition: all .15s; }
-    .btn-link:hover { background: var(--accent-light); border-color: var(--accent); }
-    .private-tag { font-size: 10px; padding: 2px 6px; border-radius: 10px; background: #fff4e5; color: #c47900; border: 1px solid #f5d99a; font-weight: 600; }
-    .no-results { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
-    .card-footer { padding: 6px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-    .debug-box { margin: 8px 0; padding: 8px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; font-size: 11px; font-family: monospace; word-break: break-all; color: #333; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 13px; padding: 12px; color: #1a2533; }
+    h3 { margin: 12px 0 6px; font-size: 13px; }
+    pre { background: #f4f5f7; border: 1px solid #dde1e7; border-radius: 6px; padding: 10px; font-size: 11px; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto; }
+    button { padding: 6px 12px; border: 1px solid #4a90d9; border-radius: 6px; background: #fff; color: #2f6fad; cursor: pointer; font-size: 12px; }
   </style>
   <script src="https://cdn.jsdelivr.net/gh/krakenjs/post-robot@7da06445/dist/post-robot.js"></script>
 </head>
 <body>
-<div class="card">
-  <div class="card-header">
-    <div class="card-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Hotlists / Tearsheets
-      <span class="badge hidden" id="count-badge">0</span>
-    </div>
-    <button class="btn-refresh" id="btn-refresh" onclick="loadData()" title="Refresh">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-      Refresh
-    </button>
-  </div>
-  <div class="search-wrap">
-    <input class="search-input" id="search-input" type="text" placeholder="Filter hotlists…" oninput="filterList()" />
-  </div>
-  <div class="card-body">
-    <div class="state" id="state-loading"><div class="spinner"></div><div class="state-title">Loading hotlists…</div></div>
-    <div class="state" id="state-error" style="display:none">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <div class="state-title">Unable to load hotlists</div>
-      <div class="state-sub" id="error-msg"></div>
-      <div class="debug-box" id="debug-box" style="display:none"></div>
-    </div>
-    <div id="state-list" style="display:none">
-      <div class="list" id="hotlist-list"></div>
-      <div class="no-results" id="no-results" style="display:none">No matching hotlists found.</div>
-    </div>
-    <div class="state" id="state-empty" style="display:none">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="12" y2="12"/></svg>
-      <div class="state-title">No hotlists found</div>
-      <div class="state-sub">This candidate isn't on any hotlists yet.</div>
-    </div>
-  </div>
-  <div class="card-footer">
-    <span id="last-updated"></span>
-    <span id="entity-label"></span>
-  </div>
-</div>
+  <h3>TearsheetMember field inspector</h3>
+  <button onclick="run()">Reload</button>
+  <h3>meta/TearsheetMember</h3>
+  <pre id="meta">running…</pre>
+  <h3>query attempt result</h3>
+  <pre id="query">waiting…</pre>
 
 <script>
 function prSend(name, data) {
   postRobot.CONFIG.LOG_LEVEL = 'debug';
-  console.log('[HotlistCard] sending', name, 'to window.parent', data);
   return postRobot.send(window.parent, name, data || {});
 }
 
 var params   = new URLSearchParams(window.location.search);
 var entityId = params.get('EntityID');
-var bhUrl    = params.get('currentBullhornUrl');
 
-var allHotlists = [];
+document.addEventListener('DOMContentLoaded', run);
 
-if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
-
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('[HotlistCard] loaded, postRobot =', typeof postRobot, 'entityId =', entityId);
-  if (!entityId) { showError('No Candidate EntityID in URL.', ''); return; }
-  loadData();
-});
-
-async function loadData() {
-  if (!entityId) return;
-  hideAll();
-  document.getElementById('state-loading').style.display = 'flex';
-  setBtnSpinning(true);
+async function run() {
+  document.getElementById('meta').textContent = 'running…';
+  document.getElementById('query').textContent = 'waiting…';
 
   try {
     await prSend('register', { name: 'hotlists-card', version: '1.0' }).catch(function(){});
+  } catch(e) {}
 
-    var fields = 'id,tearsheet(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
-    var relativeURL = 'search/TearsheetMember?query=' + encodeURIComponent('candidate.id:' + entityId)
-      + '&fields=' + encodeURIComponent(fields)
-      + '&count=200&start=0';
-
-    console.log('[HotlistCard] relativeURL:', relativeURL);
-
-    var result = await prSend('httpGET', { relativeURL: relativeURL });
-    console.log('[HotlistCard] result:', JSON.stringify(result));
-    processResults(result.data);
+  // 1. Get the metadata so we can see real field names
+  try {
+    var meta = await prSend('httpGET', { relativeURL: 'meta/TearsheetMember?fields=*' });
+    document.getElementById('meta').textContent = safeStringify(meta);
   } catch(err) {
-    var msg = 'Failed to load';
-    var detail = '';
-    try { if (err && err.message) msg = err.message; } catch(e) {}
-    try { detail = JSON.stringify(err); } catch(e) { detail = String(err); }
-    console.log('[HotlistCard] error:', msg, detail);
-    showError(msg, detail);
-  } finally {
-    setBtnSpinning(false);
+    document.getElementById('meta').textContent = 'META ERROR: ' + extractErr(err);
+  }
+
+  // 2. Try a plain query with no where clause, just to see a sample row's shape
+  try {
+    var sample = await prSend('httpGET', { relativeURL: 'query/TearsheetMember?where=id>0&fields=id,candidate(id),tearsheet(id,name)&count=5&start=0' });
+    document.getElementById('query').textContent = 'CANDIDATE: ' + entityId + '\n\n' + safeStringify(sample);
+  } catch(err) {
+    document.getElementById('query').textContent = 'QUERY ERROR: ' + extractErr(err);
   }
 }
 
-function processResults(data) {
-  hideAll();
-  var rows = [];
-  if (data && data.data && Array.isArray(data.data)) {
-    rows = data.data;
-  } else if (data && Array.isArray(data)) {
-    rows = data;
-  }
-  var raw = rows.map(function(m){ return m.tearsheet; }).filter(Boolean);
-
-  console.log('[HotlistCard] rows:', rows.length, 'tearsheets:', raw.length);
-
-  if (!raw.length) {
-    document.getElementById('state-empty').style.display = 'flex';
-    updateTimestamp();
-    return;
-  }
-
-  var seen = new Set();
-  allHotlists = raw
-    .filter(function(ts){ if (seen.has(ts.id)) return false; seen.add(ts.id); return true; })
-    .sort(function(a, b){ return a.name.localeCompare(b.name); });
-
-  document.getElementById('count-badge').textContent = allHotlists.length;
-  document.getElementById('count-badge').classList.remove('hidden');
-  renderList(allHotlists);
-  updateTimestamp();
+function extractErr(err) {
+  try { if (err && err.message) return err.message; } catch(e) {}
+  try { return JSON.stringify(err); } catch(e) {}
+  return String(err);
 }
 
-function renderList(items) {
-  var listEl    = document.getElementById('hotlist-list');
-  var noResults = document.getElementById('no-results');
-  var stateList = document.getElementById('state-list');
-  listEl.innerHTML = '';
-  stateList.style.display = 'block';
-  noResults.style.display = items.length ? 'none' : 'block';
-
-  items.forEach(function(ts, idx) {
-    var owner = ts.owner ? (ts.owner.firstName + ' ' + ts.owner.lastName).trim() : 'Unknown';
-    var date  = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
-    var meta  = [owner, date].filter(Boolean).join(' · ');
-    var item  = document.createElement('div');
-    item.className = 'hotlist-item';
-    item.style.animationDelay = (idx * 30) + 'ms';
-    item.innerHTML =
-      '<div class="hotlist-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>' +
-      '<div class="hotlist-info"><div class="hotlist-name" title="' + esc(ts.name) + '">' + esc(ts.name) + '</div>' +
-      (meta ? '<div class="hotlist-meta">' + esc(meta) + '</div>' : '') + '</div>' +
-      '<div class="hotlist-actions">' +
-      (ts.isPrivate ? '<span class="private-tag">Private</span>' : '') +
-      (ts.id ? '<button class="btn-link" onclick="openTearsheet(' + ts.id + ')">Open</button>' : '') +
-      '</div>';
-    listEl.appendChild(item);
-  });
-}
-
-function openTearsheet(id) {
-  prSend('open', { type: 'Tearsheet', id: id }).catch(function() {
-    var base = bhUrl ? 'https://' + bhUrl : 'https://app.bullhornstaffing.com';
-    window.open(base + '/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
-  });
-}
-
-function filterList() {
-  var q = document.getElementById('search-input').value.toLowerCase().trim();
-  renderList(q ? allHotlists.filter(function(ts){ return ts.name.toLowerCase().includes(q); }) : allHotlists);
-}
-
-function hideAll() {
-  ['state-loading','state-error','state-list','state-empty'].forEach(function(id){
-    document.getElementById(id).style.display = 'none';
-  });
-}
-
-function showError(msg, detail) {
-  hideAll(); setBtnSpinning(false);
-  document.getElementById('state-error').style.display = 'flex';
-  document.getElementById('error-msg').textContent = msg || 'Unknown error';
-  var dbg = document.getElementById('debug-box');
-  if (detail) { dbg.textContent = detail; dbg.style.display = 'block'; }
-}
-
-function setBtnSpinning(on) {
-  var btn = document.getElementById('btn-refresh');
-  btn.classList.toggle('spinning', on);
-  btn.disabled = on;
-}
-
-function updateTimestamp() {
-  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
-}
-
-function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function safeStringify(obj) {
+  try { return JSON.stringify(obj, null, 2); } catch(e) { return String(obj); }
 }
 </script>
 </body>
