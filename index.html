@@ -133,7 +133,7 @@ function prSend(name, data) {
 
     pending[hash] = { resolve, reject, timer };
 
-    window.top.postMessage({
+    window.parent.postMessage({
       type:   'postrobot_message_request',
       hash:   hash,
       name:   name,
