@@ -89,7 +89,7 @@
 </div>
 
 <script>
-// v12c
+// v14
 function prSend(name, data) {
   postRobot.CONFIG.LOG_LEVEL = 'debug';
   return postRobot.send(window.parent, name, data || {});
@@ -107,6 +107,35 @@ document.addEventListener('DOMContentLoaded', function() {
   loadData();
 });
 
+function getRows(result) {
+  // Each attempt is isolated so a failure in one doesn't affect others
+  var rows;
+
+  // Attempt 1: result.data.data
+  try { if (Array.isArray(result.data.data)) return result.data.data; } catch(e) {}
+
+  // Attempt 2: result.data is the array
+  try { if (Array.isArray(result.data)) return result.data; } catch(e) {}
+
+  // Attempt 3: result itself is the BH response {start,count,data:[]}
+  try { if (Array.isArray(result.count !== undefined && result.data)) return result.data; } catch(e) {}
+
+  // Attempt 4: iterate own property names
+  try {
+    var names = Object.getOwnPropertyNames(result);
+    console.log('[v14] own props:', JSON.stringify(names));
+    for (var i = 0; i < names.length; i++) {
+      try {
+        var v = result[names[i]];
+        if (v && typeof v === 'object' && Array.isArray(v.data)) return v.data;
+        if (Array.isArray(v)) return v;
+      } catch(e2) {}
+    }
+  } catch(e) {}
+
+  return [];
+}
+
 async function loadData() {
   if (!entityId) return;
   hideAll();
@@ -122,32 +151,8 @@ async function loadData() {
       + '&count=200&start=0';
 
     var result = await prSend('httpGET', { relativeURL: relativeURL });
-
-    var rows = [];
-    try {
-      // Inspect what keys post-robot exposes on result
-      var keys = Object.keys(result || {});
-      console.log('[v12c] result keys:', JSON.stringify(keys));
-
-      // Try each key to find the BH response object
-      for (var i = 0; i < keys.length; i++) {
-        try {
-          var val = result[keys[i]];
-          console.log('[v12c] key "' + keys[i] + '" type:', typeof val);
-          if (val && typeof val === 'object' && val.data && Array.isArray(val.data)) {
-            rows = val.data;
-            console.log('[v12c] found rows at key "' + keys[i] + '":', rows.length);
-            break;
-          }
-        } catch(e2) {
-          console.log('[v12c] key "' + keys[i] + '" error:', String(e2));
-        }
-      }
-    } catch(e) {
-      console.log('[v12c] outer error:', String(e));
-    }
-
-    console.log('[v12c] final rows:', rows.length);
+    var rows = getRows(result);
+    console.log('[v14] rows:', rows.length);
     processResults(rows);
   } catch(err) {
     var msg = 'Failed to load';
