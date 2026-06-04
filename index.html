@@ -82,7 +82,6 @@
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="12" y2="12"/></svg>
       <div class="state-title">No hotlists found</div>
       <div class="state-sub">This candidate isn't on any hotlists yet.</div>
-      <div class="debug-box" id="empty-debug" style="display:none"></div>
     </div>
   </div>
   <div class="card-footer">
@@ -110,12 +109,6 @@ document.addEventListener('DOMContentLoaded', function() {
   loadData();
 });
 
-function unwrap(result) {
-  var d = result;
-  if (result && result.data !== undefined) d = result.data;
-  return d;
-}
-
 async function loadData() {
   if (!entityId) return;
   hideAll();
@@ -125,20 +118,13 @@ async function loadData() {
   try {
     await prSend('register', { name: 'hotlists-card', version: '1.0' }).catch(function(){});
 
-    // Query Tearsheet entity, filtered by candidate membership
     var fields = 'id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded';
     var relativeURL = 'query/Tearsheet?where=' + encodeURIComponent('candidates.id=' + entityId)
       + '&fields=' + encodeURIComponent(fields)
       + '&count=200&start=0';
 
     var result = await prSend('httpGET', { relativeURL: relativeURL });
-    var payload = unwrap(result);
-
-    var rawTxt = '';
-    try { rawTxt = JSON.stringify(payload); } catch(e) { rawTxt = String(payload); }
-    console.log('[HotlistCard] RAW payload:', rawTxt);
-
-    processResults(payload, rawTxt);
+    processResults(result);
   } catch(err) {
     var msg = 'Failed to load';
     var detail = '';
@@ -150,17 +136,21 @@ async function loadData() {
   }
 }
 
-function processResults(payload, rawTxt) {
-  hideAll();
+// Response shape: result.data = { start, count, data: [ ...tearsheets... ], error }
+function extractRows(result) {
+  var lvl1 = (result && result.data !== undefined) ? result.data : result;     // strip post-robot wrapper
+  var lvl2 = (lvl1 && lvl1.data !== undefined) ? lvl1.data : lvl1;             // strip Bullhorn { start,count,data }
+  if (Array.isArray(lvl2)) return lvl2;
+  if (Array.isArray(lvl1)) return lvl1;
+  return [];
+}
 
-  var rows = [];
-  if (payload && payload.data && Array.isArray(payload.data)) rows = payload.data;
-  else if (Array.isArray(payload)) rows = payload;
+function processResults(result) {
+  hideAll();
+  var rows = extractRows(result);
 
   if (!rows.length) {
     document.getElementById('state-empty').style.display = 'flex';
-    var ed = document.getElementById('empty-debug');
-    if (rawTxt) { ed.textContent = rawTxt; ed.style.display = 'block'; }
     updateTimestamp();
     return;
   }
