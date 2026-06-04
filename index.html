@@ -82,6 +82,7 @@
       <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="12" x2="12" y2="12"/></svg>
       <div class="state-title">No hotlists found</div>
       <div class="state-sub">This candidate isn't on any hotlists yet.</div>
+      <div class="debug-box" id="empty-debug" style="display:none"></div>
     </div>
   </div>
   <div class="card-footer">
@@ -124,13 +125,18 @@ async function loadData() {
   try {
     await prSend('register', { name: 'hotlists-card', version: '1.0' }).catch(function(){});
 
-    // Query the Candidate entity directly for its tearsheets association
     var fields = 'id,tearsheets(id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded)';
     var relativeURL = 'entity/Candidate/' + entityId + '?fields=' + encodeURIComponent(fields);
 
     var result = await prSend('httpGET', { relativeURL: relativeURL });
     var payload = unwrap(result);
-    processResults(payload);
+
+    // DEBUG: log the full raw payload
+    var rawTxt = '';
+    try { rawTxt = JSON.stringify(payload); } catch(e) { rawTxt = String(payload); }
+    console.log('[HotlistCard] RAW payload:', rawTxt);
+
+    processResults(payload, rawTxt);
   } catch(err) {
     var msg = 'Failed to load';
     var detail = '';
@@ -142,10 +148,9 @@ async function loadData() {
   }
 }
 
-function processResults(payload) {
+function processResults(payload, rawTxt) {
   hideAll();
 
-  // entity call returns { data: { id, tearsheets: { total, data: [...] } } }
   var inner = payload && payload.data ? payload.data : payload;
   var tsAssoc = inner && inner.tearsheets ? inner.tearsheets : null;
   var rows = [];
@@ -154,6 +159,9 @@ function processResults(payload) {
 
   if (!rows.length) {
     document.getElementById('state-empty').style.display = 'flex';
+    // Show raw payload in the empty state so we can see the shape
+    var ed = document.getElementById('empty-debug');
+    if (rawTxt) { ed.textContent = rawTxt; ed.style.display = 'block'; }
     updateTimestamp();
     return;
   }
