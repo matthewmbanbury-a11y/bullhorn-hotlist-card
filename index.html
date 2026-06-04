@@ -47,7 +47,6 @@
     .no-results { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
     .card-footer { padding: 6px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
   </style>
-  <script src="https://cdn.jsdelivr.net/gh/krakenjs/post-robot@7da06445/dist/post-robot.js"></script>
 </head>
 <body>
 <div class="card">
@@ -89,47 +88,163 @@
 </div>
 
 <script>
-// v15 - use .then() instead of await, process data inside callback
-function prSend(name, data) {
-  postRobot.CONFIG.LOG_LEVEL = 'debug';
-  return postRobot.send(window.parent, name, data || {});
-}
-
-var params   = new URLSearchParams(window.location.search);
-var entityId = params.get('EntityID');
-var bhUrl    = params.get('currentBullhornUrl');
+// v16 - direct fetch using authCode as BhRestToken
+var params     = new URLSearchParams(window.location.search);
+var entityId   = params.get('EntityID');
+var authCode   = params.get('authCode');
 var allHotlists = [];
+
+// REST base URL — derived from the swimlane in the authCode prefix
+// authCode format: corpId_userId_swimlane:token
+// We know from logs the restUrl is https://rest21.bullhornstaffing.com/rest-services/7pklds/
+// But we should discover it properly via loginInfo + login
+var bhRestToken = null;
+var restUrl     = null;
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
 document.addEventListener('DOMContentLoaded', function() {
-  if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
-  loadData();
+  if (!entityId) { showError('No EntityID in URL.'); return; }
+  if (!authCode) { showError('No authCode in URL.'); return; }
+  init();
 });
 
-function loadData() {
-  if (!entityId) return;
+async function init() {
   hideAll();
   document.getElementById('state-loading').style.display = 'flex';
   setBtnSpinning(true);
 
-  prSend('register', { name: 'hotlists-card', version: '1.0' })
-    .catch(function(){})
-    .then(function() {
-      var fields = 'id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded';
-      var relativeURL = 'query/Tearsheet?where=' + encodeURIComponent('candidates.id=' + entityId)
-        + '&fields=' + encodeURIComponent(fields)
-        + '&count=200&start=0';
+  try {
+    // Step 1: Exchange authCode for BhRestToken + restUrl via REST login
+    // The authCode Bullhorn passes IS an OAuth access token
+    var loginResp = await fetch(
+      'https://rest.bullhornstaffing.com/rest-services/login?version=*&access_token=' + encodeURIComponent(authCode),
+      { method: 'GET' }
+    );
+    var loginData = await loginResp.json();
+    console.log('[v16] login:', JSON.stringify(loginData));
 
-      return prSend('httpGET', { relativeURL: relativeURL });
-    })
-    .then(function(result) {
-      // Process data inside .then — data is fully available here
-      setBtnSpinning(false);
-      var rows = [];
-      try {
-        var d = result.data;
-        console.log('[v15] d type:', typeof d, 'keys:', d ? JSON.stringify(Object.getOwnPropertyNames(d)) : 'null');
-        if (d && Array.isArray(d.data)) rows = d.data;
-        else if (Array.isArray(d)) rows = d;
-      } catch(e) {
+    if (!loginData.BhRestToken || !loginData.restUrl) {
+      showError('Login failed: ' + JSON.stringify(loginData));
+      return;
+    }
+
+    bhRestToken = loginData.BhRestToken;
+    restUrl     = loginData.restUrl;
+
+    await loadData();
+  } catch(err) {
+    showError('Init error: ' + String(err));
+  } finally {
+    setBtnSpinning(false);
+  }
+}
+
+async function loadData() {
+  if (!bhRestToken || !restUrl) { await init(); return; }
+  hideAll();
+  document.getElementById('state-loading').style.display = 'flex';
+  setBtnSpinning(true);
+
+  try {
+    var fields = 'id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded';
+    var url = restUrl + 'query/Tearsheet'
+      + '?where=' + encodeURIComponent('candidates.id=' + entityId)
+      + '&fields=' + encodeURIComponent(fields)
+      + '&count=200&start=0'
+      + '&BhRestToken=' + encodeURIComponent(bhRestToken);
+
+    var resp = await fetch(url);
+    var data = await resp.json();
+    console.log('[v16] query:', JSON.stringify(data));
+
+    var rows = (data && Array.isArray(data.data)) ? data.data : [];
+    processResults(rows);
+  } catch(err) {
+    showError('Load error: ' + String(err));
+  } finally {
+    setBtnSpinning(false);
+  }
+}
+
+function processResults(rows) {
+  hideAll();
+  if (!rows.length) {
+    document.getElementById('state-empty').style.display = 'flex';
+    updateTimestamp();
+    return;
+  }
+  var seen = new Set();
+  allHotlists = rows
+    .filter(function(ts){ if (!ts || seen.has(ts.id)) return false; seen.add(ts.id); return true; })
+    .sort(function(a, b){ return (a.name||'').localeCompare(b.name||''); });
+  document.getElementById('count-badge').textContent = allHotlists.length;
+  document.getElementById('count-badge').classList.remove('hidden');
+  renderList(allHotlists);
+  updateTimestamp();
+}
+
+function renderList(items) {
+  var listEl    = document.getElementById('hotlist-list');
+  var noResults = document.getElementById('no-results');
+  var stateList = document.getElementById('state-list');
+  listEl.innerHTML = '';
+  stateList.style.display = 'block';
+  noResults.style.display = items.length ? 'none' : 'block';
+  items.forEach(function(ts, idx) {
+    var owner = ts.owner ? ((ts.owner.firstName||'') + ' ' + (ts.owner.lastName||'')).trim() : 'Unknown';
+    var date  = ts.dateAdded ? new Date(ts.dateAdded).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' }) : '';
+    var meta  = [owner, date].filter(Boolean).join(' · ');
+    var item  = document.createElement('div');
+    item.className = 'hotlist-item';
+    item.style.animationDelay = (idx * 30) + 'ms';
+    item.innerHTML =
+      '<div class="hotlist-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>' +
+      '<div class="hotlist-info"><div class="hotlist-name" title="' + esc(ts.name) + '">' + esc(ts.name) + '</div>' +
+      (meta ? '<div class="hotlist-meta">' + esc(meta) + '</div>' : '') + '</div>' +
+      '<div class="hotlist-actions">' +
+      (ts.isPrivate ? '<span class="private-tag">Private</span>' : '') +
+      (ts.id ? '<button class="btn-link" onclick="openTearsheet(' + ts.id + ')">Open</button>' : '') +
+      '</div>';
+    listEl.appendChild(item);
+  });
+}
+
+function openTearsheet(id) {
+  var base = restUrl ? restUrl.replace('/rest-services/', '').replace(/\/[^/]+\/$/, '') : 'https://app.bullhornstaffing.com';
+  window.open('https://app.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
+}
+
+function filterList() {
+  var q = document.getElementById('search-input').value.toLowerCase().trim();
+  renderList(q ? allHotlists.filter(function(ts){ return (ts.name||'').toLowerCase().includes(q); }) : allHotlists);
+}
+
+function hideAll() {
+  ['state-loading','state-error','state-list','state-empty'].forEach(function(id){
+    document.getElementById(id).style.display = 'none';
+  });
+}
+
+function showError(msg) {
+  hideAll(); setBtnSpinning(false);
+  document.getElementById('state-error').style.display = 'flex';
+  document.getElementById('error-msg').textContent = msg || 'Unknown error';
+}
+
+function setBtnSpinning(on) {
+  var btn = document.getElementById('btn-refresh');
+  btn.classList.toggle('spinning', on);
+  btn.disabled = on;
+}
+
+function updateTimestamp() {
+  document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
