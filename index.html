@@ -47,6 +47,7 @@
     .no-results { text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; }
     .card-footer { padding: 6px 14px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text-muted); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
   </style>
+  <script src="https://cdn.jsdelivr.net/gh/krakenjs/post-robot@7da06445/dist/post-robot.js"></script>
 </head>
 <body>
 <div class="card">
@@ -88,80 +89,148 @@
 </div>
 
 <script>
-// v16 - direct fetch using authCode as BhRestToken
-var params     = new URLSearchParams(window.location.search);
-var entityId   = params.get('EntityID');
-var authCode   = params.get('authCode');
+// v17 - intercept raw postMessage to capture data before cross-origin wrapper
+var params   = new URLSearchParams(window.location.search);
+var entityId = params.get('EntityID');
+var bhUrl    = params.get('currentBullhornUrl');
 var allHotlists = [];
-
-// REST base URL — derived from the swimlane in the authCode prefix
-// authCode format: corpId_userId_swimlane:token
-// We know from logs the restUrl is https://rest21.bullhornstaffing.com/rest-services/7pklds/
-// But we should discover it properly via loginInfo + login
-var bhRestToken = null;
-var restUrl     = null;
+var pendingResolvers = {};
 
 if (entityId) document.getElementById('entity-label').textContent = 'Candidate #' + entityId;
 
-document.addEventListener('DOMContentLoaded', function() {
-  if (!entityId) { showError('No EntityID in URL.'); return; }
-  if (!authCode) { showError('No authCode in URL.'); return; }
-  init();
-});
-
-async function init() {
-  hideAll();
-  document.getElementById('state-loading').style.display = 'flex';
-  setBtnSpinning(true);
-
+// Intercept ALL incoming postMessages and capture the raw data payload
+// before post-robot's cross-origin proxy wraps it
+window.addEventListener('message', function(evt) {
   try {
-    // Step 1: Exchange authCode for BhRestToken + restUrl via REST login
-    // The authCode Bullhorn passes IS an OAuth access token
-    var loginResp = await fetch(
-      'https://rest.bullhornstaffing.com/rest-services/login?version=*&access_token=' + encodeURIComponent(authCode),
-      { method: 'GET' }
-    );
-    var loginData = await loginResp.json();
-    console.log('[v16] login:', JSON.stringify(loginData));
+    var raw = typeof evt.data === 'string' ? JSON.parse(evt.data) : evt.data;
+    if (!raw) return;
 
-    if (!loginData.BhRestToken || !loginData.restUrl) {
-      showError('Login failed: ' + JSON.stringify(loginData));
-      return;
+    // post-robot response messages have type postrobot_message_response
+    if (raw.type === 'postrobot_message_response' && raw.name === 'httpGET') {
+      var hash = raw.hash;
+      var responseData = raw.data;
+      console.log('[v17] raw httpGET response hash:', hash);
+      console.log('[v17] raw data type:', typeof responseData);
+      try { console.log('[v17] raw data:', JSON.stringify(responseData)); } catch(e) {}
+
+      if (pendingResolvers[hash]) {
+        pendingResolvers[hash](responseData);
+        delete pendingResolvers[hash];
+      }
     }
+  } catch(e) {}
+}, true); // capture phase - fires before post-robot
 
-    bhRestToken = loginData.BhRestToken;
-    restUrl     = loginData.restUrl;
-
-    await loadData();
-  } catch(err) {
-    showError('Init error: ' + String(err));
-  } finally {
-    setBtnSpinning(false);
-  }
+function prSend(name, data) {
+  postRobot.CONFIG.LOG_LEVEL = 'debug';
+  return postRobot.send(window.parent, name, data || {});
 }
 
+function prSendAndCapture(name, data) {
+  return new Promise(function(resolve, reject) {
+    // Generate a unique hash to match the response
+    var tempHash = name + '_' + Math.random().toString(36).slice(2);
+
+    // Send via post-robot (which will assign its own hash)
+    // We intercept ALL httpGET responses so we just need the next one
+    var nextResolve = function(responseData) {
+      resolve(responseData);
+    };
+
+    // Store under a wildcard key — we'll just take the next httpGET response
+    var key = 'httpGET_next';
+    pendingResolvers[key] = nextResolve;
+
+    prSend(name, data).catch(function(err) {
+      // post-robot may throw due to cross-origin — that's ok, we already captured the data
+      console.log('[v17] prSend threw (expected):', String(err));
+    });
+
+    // Timeout fallback
+    setTimeout(function() {
+      if (pendingResolvers[key]) {
+        delete pendingResolvers[key];
+        reject(new Error('timeout'));
+      }
+    }, 10000);
+  });
+}
+
+// Better approach: intercept by matching ANY httpGET response hash
+// Override the message listener to capture by actual hash
+window.addEventListener('message', function(evt) {
+  try {
+    var raw = typeof evt.data === 'string' ? JSON.parse(evt.data) : evt.data;
+    if (!raw || raw.type !== 'postrobot_message_response' || raw.name !== 'httpGET') return;
+    var hash = raw.hash;
+    if (pendingResolvers[hash]) {
+      pendingResolvers[hash](raw.data);
+      delete pendingResolvers[hash];
+    }
+    // Also resolve the wildcard
+    if (pendingResolvers['httpGET_next']) {
+      pendingResolvers['httpGET_next'](raw.data);
+      delete pendingResolvers['httpGET_next'];
+    }
+  } catch(e) {}
+}, true);
+
+function sendHttpGET(relativeURL) {
+  return new Promise(function(resolve, reject) {
+    var resolved = false;
+
+    // Intercept the next httpGET response
+    pendingResolvers['httpGET_next'] = function(data) {
+      if (!resolved) { resolved = true; resolve(data); }
+    };
+
+    prSend('httpGET', { relativeURL: relativeURL }).catch(function(err) {
+      console.log('[v17] httpGET post-robot error (may be ok):', String(err));
+    });
+
+    setTimeout(function() {
+      if (!resolved) {
+        resolved = true;
+        delete pendingResolvers['httpGET_next'];
+        reject(new Error('Request timed out'));
+      }
+    }, 10000);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (!entityId) { showError('No Candidate EntityID in URL.'); return; }
+  loadData();
+});
+
 async function loadData() {
-  if (!bhRestToken || !restUrl) { await init(); return; }
+  if (!entityId) return;
   hideAll();
   document.getElementById('state-loading').style.display = 'flex';
   setBtnSpinning(true);
 
   try {
+    await prSend('register', { name: 'hotlists-card', version: '1.0' }).catch(function(){});
+
     var fields = 'id,name,description,isPrivate,owner(id,firstName,lastName),dateAdded';
-    var url = restUrl + 'query/Tearsheet'
-      + '?where=' + encodeURIComponent('candidates.id=' + entityId)
+    var relativeURL = 'query/Tearsheet?where=' + encodeURIComponent('candidates.id=' + entityId)
       + '&fields=' + encodeURIComponent(fields)
-      + '&count=200&start=0'
-      + '&BhRestToken=' + encodeURIComponent(bhRestToken);
+      + '&count=200&start=0';
 
-    var resp = await fetch(url);
-    var data = await resp.json();
-    console.log('[v16] query:', JSON.stringify(data));
+    var data = await sendHttpGET(relativeURL);
+    console.log('[v17] captured data type:', typeof data);
+    try { console.log('[v17] captured data:', JSON.stringify(data)); } catch(e) {
+      console.log('[v17] captured data stringify failed');
+    }
 
-    var rows = (data && Array.isArray(data.data)) ? data.data : [];
+    var rows = [];
+    if (data && Array.isArray(data.data)) rows = data.data;
+    else if (Array.isArray(data)) rows = data;
+
+    console.log('[v17] rows:', rows.length);
     processResults(rows);
   } catch(err) {
-    showError('Load error: ' + String(err));
+    showError(String(err));
   } finally {
     setBtnSpinning(false);
   }
@@ -211,7 +280,6 @@ function renderList(items) {
 }
 
 function openTearsheet(id) {
-  var base = restUrl ? restUrl.replace('/rest-services/', '').replace(/\/[^/]+\/$/, '') : 'https://app.bullhornstaffing.com';
   window.open('https://app.bullhornstaffing.com/BullhornSTAFFING/OpenWindow.cfm?Entity=Tearsheet&id=' + id, '_blank');
 }
 
