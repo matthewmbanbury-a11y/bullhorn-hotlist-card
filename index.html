@@ -4,25 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Hotlist Card</title>
+  <!--
+    post-robot: the same library novo-elements AppBridge uses internally.
+    We use it here to replicate AppBridge.register() and AppBridge.httpGET()
+    without needing the full Angular/novo-elements stack.
+  -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/post-robot/10.0.46/post-robot.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:        #0d1117;
-      --surface:   #161b22;
-      --surface2:  #1c2128;
-      --border:    #21262d;
-      --text:      #e6edf3;
-      --muted:     #8b949e;
-      --accent:    #f78166;
-      --blue:      #58a6ff;
-      --green:     #3fb950;
-      --yellow:    #d29922;
-      --purple:    #bc8cff;
-      --pink:      #f778ba;
-      --teal:      #39d353;
+      --bg:      #0d1117;
+      --surface: #161b22;
+      --surface2:#1c2128;
+      --border:  #21262d;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+      --purple:  #bc8cff;
+      --blue:    #58a6ff;
+      --green:   #3fb950;
+      --yellow:  #d29922;
+      --accent:  #f78166;
+      --pink:    #f778ba;
     }
 
     html, body {
@@ -34,12 +39,9 @@
       overflow: hidden;
     }
 
-    body {
-      display: flex;
-      flex-direction: column;
-    }
+    body { display: flex; flex-direction: column; }
 
-    /* ── Header ── */
+    /* Header */
     .header {
       display: flex;
       align-items: center;
@@ -48,591 +50,419 @@
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-    }
-
+    .header-left { display: flex; align-items: center; gap: 9px; }
     .header-icon {
       width: 26px; height: 26px;
       background: linear-gradient(135deg, #f778ba, #bc8cff);
       border-radius: 6px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 13px;
-      flex-shrink: 0;
+      font-size: 13px; flex-shrink: 0;
     }
-
-    .header-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .header-sub {
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 1px;
-    }
-
+    .header-title { font-size: 13px; font-weight: 600; }
+    .header-sub   { font-size: 10px; color: var(--muted); margin-top: 1px; }
     .count-pill {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      font-weight: 500;
-      background: rgba(188,140,255,0.15);
-      color: var(--purple);
-      border: 1px solid rgba(188,140,255,0.25);
-      border-radius: 20px;
-      padding: 2px 9px;
+      font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500;
+      background: rgba(188,140,255,0.15); color: var(--purple);
+      border: 1px solid rgba(188,140,255,0.25); border-radius: 20px; padding: 2px 9px;
     }
 
-    /* ── Search ── */
-    .search-wrap {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
+    /* Search */
+    .search-wrap { padding: 9px 14px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
     .search-input {
-      width: 100%;
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 6px 10px 6px 30px;
-      font-family: inherit;
-      font-size: 12px;
-      color: var(--text);
-      outline: none;
+      width: 100%; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 6px; padding: 6px 10px 6px 30px;
+      font-family: inherit; font-size: 12px; color: var(--text); outline: none;
       transition: border-color 0.15s;
       background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238b949e' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: 9px center;
+      background-repeat: no-repeat; background-position: 9px center;
     }
-
     .search-input:focus { border-color: var(--purple); }
     .search-input::placeholder { color: var(--muted); }
 
-    /* ── List ── */
-    .list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px 0;
-      min-height: 0;
-    }
-
+    /* List */
+    .list { flex: 1; overflow-y: auto; padding: 6px 0; min-height: 0; }
     .list::-webkit-scrollbar { width: 4px; }
     .list::-webkit-scrollbar-track { background: transparent; }
     .list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-    /* ── Hotlist item ── */
+    /* Hotlist row */
     .hotlist-item {
-      display: flex;
-      align-items: center;
-      gap: 11px;
-      padding: 9px 14px;
-      border-bottom: 1px solid transparent;
-      transition: background 0.1s;
-      cursor: default;
-      animation: fadeIn 0.25s ease both;
+      display: flex; align-items: center; gap: 11px;
+      padding: 9px 14px; transition: background 0.1s;
+      animation: fadeIn 0.2s ease both;
     }
+    .hotlist-item:hover { background: var(--surface2); }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
 
-    .hotlist-item:hover {
-      background: var(--surface2);
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .hotlist-avatar {
-      width: 32px; height: 32px;
-      border-radius: 8px;
+    .avatar {
+      width: 32px; height: 32px; border-radius: 8px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
-      flex-shrink: 0;
-      font-weight: 600;
-      font-family: 'DM Mono', monospace;
+      font-size: 11px; font-weight: 700; font-family: 'DM Mono', monospace; flex-shrink: 0;
     }
-
-    .hotlist-body {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .hotlist-name {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .hotlist-meta {
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 2px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .hotlist-meta-item {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-    }
-
-    .hotlist-right {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
-      flex-shrink: 0;
-    }
+    .row-body { flex: 1; min-width: 0; }
+    .row-name  { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .row-meta  { font-size: 10px; color: var(--muted); margin-top: 2px; display: flex; gap: 8px; }
+    .row-meta svg { vertical-align: middle; margin-right: 2px; }
+    .row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
 
     .tag {
-      font-size: 9px;
-      font-family: 'DM Mono', monospace;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: 500;
-      white-space: nowrap;
-      letter-spacing: 0.03em;
+      font-size: 9px; font-family: 'DM Mono', monospace;
+      padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.04em;
     }
+    .row-date { font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
 
-    .added-date {
-      font-size: 10px;
-      color: var(--muted);
-      font-family: 'DM Mono', monospace;
+    /* States */
+    .state {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 8px; padding: 20px;
     }
-
-    /* ── Empty / loading / error ── */
-    .state-wrap {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 9px;
-      padding: 20px;
-    }
-
     .state-icon { font-size: 26px; }
-
-    .state-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .state-msg {
-      font-size: 11px;
-      color: var(--muted);
-      text-align: center;
-      max-width: 240px;
-      line-height: 1.6;
-    }
-
+    .state-title { font-size: 13px; font-weight: 600; }
+    .state-msg { font-size: 11px; color: var(--muted); text-align: center; max-width: 240px; line-height: 1.6; }
     .spinner {
-      width: 24px; height: 24px;
-      border: 2px solid var(--border);
-      border-top-color: var(--purple);
-      border-radius: 50%;
-      animation: spin 0.75s linear infinite;
+      width: 22px; height: 22px;
+      border: 2px solid var(--border); border-top-color: var(--purple);
+      border-radius: 50%; animation: spin 0.75s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
     .retry-btn {
-      margin-top: 2px;
-      padding: 5px 14px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-family: inherit;
-      font-size: 11px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: border-color 0.15s;
+      margin-top: 2px; padding: 5px 14px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); font-family: inherit;
+      font-size: 11px; border-radius: 6px; cursor: pointer; transition: border-color 0.15s;
     }
     .retry-btn:hover { border-color: var(--purple); color: var(--purple); }
 
-    /* ── Footer ── */
+    /* Footer */
     .footer {
-      padding: 7px 14px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
+      padding: 7px 14px; border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; flex-shrink: 0;
     }
-
-    .footer-note {
-      font-size: 10px;
-      color: var(--muted);
-    }
-
-    .footer-owner {
-      font-size: 10px;
-      color: var(--muted);
-      font-style: italic;
-    }
+    .footer-note { font-size: 10px; color: var(--muted); }
 
     .hidden { display: none !important; }
-
-    /* ── Separator label ── */
-    .section-label {
-      font-size: 9px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      padding: 6px 14px 4px;
-      font-family: 'DM Mono', monospace;
-    }
   </style>
 </head>
 <body>
 
-  <!-- Header -->
   <div class="header">
     <div class="header-left">
       <div class="header-icon">🔥</div>
       <div>
-        <div class="header-title" id="headerTitle">Hotlists</div>
-        <div class="header-sub" id="headerSub">Loading candidate…</div>
+        <div class="header-title">Hotlists</div>
+        <div class="header-sub" id="headerSub">Loading…</div>
       </div>
     </div>
     <span class="count-pill hidden" id="countPill">0</span>
   </div>
 
-  <!-- Search (shown only when results exist) -->
   <div class="search-wrap hidden" id="searchWrap">
     <input class="search-input" id="searchInput" type="text" placeholder="Filter hotlists…" />
   </div>
 
-  <!-- Loading -->
-  <div class="state-wrap" id="loadingState">
+  <div class="state" id="stateLoading">
     <div class="spinner"></div>
     <div class="state-msg">Loading hotlists…</div>
   </div>
 
-  <!-- Error -->
-  <div class="state-wrap hidden" id="errorState">
+  <div class="state hidden" id="stateError">
     <div class="state-icon">⚠️</div>
     <div class="state-title">Couldn't load data</div>
-    <div class="state-msg" id="errorMsg">Open this card from a Candidate record in Bullhorn.</div>
+    <div class="state-msg" id="errorMsg">Open this card from a Candidate record.</div>
     <button class="retry-btn" onclick="init()">Retry</button>
   </div>
 
-  <!-- Empty -->
-  <div class="state-wrap hidden" id="emptyState">
+  <div class="state hidden" id="stateEmpty">
     <div class="state-icon">📋</div>
     <div class="state-title">No hotlists</div>
     <div class="state-msg" id="emptyMsg">This candidate hasn't been added to any hotlists yet.</div>
   </div>
 
-  <!-- List -->
-  <div class="list hidden" id="listWrap"></div>
+  <div class="list hidden" id="list"></div>
 
-  <!-- Footer -->
   <div class="footer hidden" id="footer">
-    <div class="footer-note" id="footerNote"></div>
-    <div class="footer-owner" id="footerOwner"></div>
+    <span class="footer-note" id="footerNote"></span>
   </div>
 
   <script>
-    // ─────────────────────────────────────────────
-    //  Colour palette for hotlist avatars
-    // ─────────────────────────────────────────────
-    const PALETTES = [
-      { bg: 'rgba(247,120,186,0.18)', color: '#f778ba' },
-      { bg: 'rgba(188,140,255,0.18)', color: '#bc8cff' },
-      { bg: 'rgba(88,166,255,0.18)',  color: '#58a6ff' },
-      { bg: 'rgba(63,185,80,0.18)',   color: '#3fb950'  },
-      { bg: 'rgba(210,153,34,0.18)',  color: '#d29922'  },
-      { bg: 'rgba(247,129,102,0.18)', color: '#f78166'  },
-      { bg: 'rgba(57,211,83,0.18)',   color: '#39d353'  },
-    ];
+  // ─────────────────────────────────────────────────────────────────
+  //  AppBridge — mirrors novo-elements AppBridge using post-robot
+  //  The key message types used by Bullhorn:
+  //    'register' → handshake with Novo mainframe
+  //    'httpGET'  → proxied REST GET, response: { data: {data:...}, error }
+  //    'httpPOST' → proxied REST POST (used for /search)
+  // ─────────────────────────────────────────────────────────────────
+  const TITLE = 'La Fosse Hotlist Card';
+  const MAX_ATTEMPTS = 4;
+  const RETRY_DELAY  = 500;
 
-    function palette(i) { return PALETTES[i % PALETTES.length]; }
+  let bridge = null;   // post-robot reference to parent window
+  let registered = false;
+  let attempts = 0;
 
-    // Tag colours by list name keywords
-    function tagStyle(name) {
-      const n = (name || '').toLowerCase();
-      if (n.includes('vip') || n.includes('priority'))   return { bg: 'rgba(247,129,102,0.18)', color: '#f78166' };
-      if (n.includes('tech') || n.includes('engineer'))  return { bg: 'rgba(88,166,255,0.18)',  color: '#58a6ff' };
-      if (n.includes('contract') || n.includes('temp'))  return { bg: 'rgba(210,153,34,0.18)',  color: '#d29922' };
-      if (n.includes('perm') || n.includes('permanent')) return { bg: 'rgba(63,185,80,0.18)',   color: '#3fb950' };
-      if (n.includes('exec') || n.includes('director'))  return { bg: 'rgba(188,140,255,0.18)', color: '#bc8cff' };
+  function getParam(k) { return new URLSearchParams(location.search).get(k); }
+  function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ── Register with Bullhorn Novo mainframe ──
+  function register() {
+    attempts++;
+    // post-robot.sendToParent mirrors what novo-elements AppBridge does internally
+    postRobot.sendToParent('register', { title: TITLE }, { timeout: 5000 })
+      .then(evt => {
+        registered = true;
+        onRegistered();
+      })
+      .catch(err => {
+        if (attempts < MAX_ATTEMPTS) {
+          setTimeout(register, RETRY_DELAY);
+        } else {
+          console.warn('AppBridge registration failed after', MAX_ATTEMPTS, 'attempts:', err);
+          // Fall through to mock data in dev
+          onRegistered();
+        }
+      });
+  }
+
+  // ── Proxied GET via AppBridge ──
+  function bhGet(relativeURL) {
+    return postRobot.sendToParent('httpGET', { relativeURL }, { timeout: 15000 })
+      .then(evt => {
+        // AppBridge wraps: evt.data = { data: <server response>, error: <post-robot error> }
+        const payload = evt.data;
+        if (!payload)          throw new Error('Empty response from AppBridge');
+        if (payload.error)     throw new Error(payload.error);
+        return payload.data;   // the actual Bullhorn REST response
+      });
+  }
+
+  // ── Proxied POST via AppBridge (used for /search) ──
+  function bhPost(relativeURL, body) {
+    return postRobot.sendToParent('httpPOST', { relativeURL, data: body }, { timeout: 15000 })
+      .then(evt => {
+        const payload = evt.data;
+        if (!payload)       throw new Error('Empty response from AppBridge');
+        if (payload.error)  throw new Error(payload.error);
+        return payload.data;
+      });
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  //  Data fetching
+  // ─────────────────────────────────────────────────────────────────
+  async function fetchCandidate(id) {
+    try {
+      // GET /entity/Candidate/{id}?fields=id,firstName,lastName
+      const res = await bhGet(`entity/Candidate/${id}?fields=id,firstName,lastName`);
+      return res.data || res;
+    } catch {
       return null;
     }
+  }
 
-    // ─────────────────────────────────────────────
-    //  State
-    // ─────────────────────────────────────────────
-    let allHotlists = [];
-    let candidateName = '';
+  async function fetchHotlists(candidateId) {
+    // Bullhorn's entity for candidate↔hotlist membership is CandidateHotlistStatus
+    // We POST to /search/CandidateHotlistStatus (Lucene-indexed entity)
+    const body = {
+      query:  `candidate.id:${candidateId}`,
+      fields: 'id,dateAdded,hotlistDefinition(id,name,owner(firstName,lastName),countCandidates,dateAdded)',
+      count:  100,
+      sort:   '-dateAdded',
+      start:  0
+    };
+    const res = await bhPost('search/CandidateHotlistStatus', body);
+    return (res && res.data) ? res.data : [];
+  }
 
-    // ─────────────────────────────────────────────
-    //  AppBridge
-    // ─────────────────────────────────────────────
-    function getParam(k) { return new URL(location.href).searchParams.get(k); }
-    function tryParse(s) { try { return JSON.parse(s); } catch { return null; } }
+  // ─────────────────────────────────────────────────────────────────
+  //  Rendering
+  // ─────────────────────────────────────────────────────────────────
+  const PALETTES = [
+    { bg:'rgba(247,120,186,0.18)', color:'#f778ba' },
+    { bg:'rgba(188,140,255,0.18)', color:'#bc8cff' },
+    { bg:'rgba(88,166,255,0.18)',  color:'#58a6ff' },
+    { bg:'rgba(63,185,80,0.18)',   color:'#3fb950' },
+    { bg:'rgba(210,153,34,0.18)',  color:'#d29922' },
+    { bg:'rgba(247,129,102,0.18)', color:'#f78166' },
+  ];
 
-    function connectAppBridge() {
-      return new Promise(resolve => {
-        let done = false;
+  function tagFor(name) {
+    const n = (name||'').toLowerCase();
+    if (n.includes('vip') || n.includes('priority')) return { bg:'rgba(247,129,102,0.18)', color:'#f78166', label:'VIP' };
+    if (n.includes('exec') || n.includes('director')) return { bg:'rgba(188,140,255,0.18)', color:'#bc8cff', label:'EXEC' };
+    if (n.includes('perm') || n.includes('permanent')) return { bg:'rgba(63,185,80,0.18)', color:'#3fb950', label:'PERM' };
+    if (n.includes('contract') || n.includes('temp')) return { bg:'rgba(210,153,34,0.18)', color:'#d29922', label:'CONTRACT' };
+    if (n.includes('tech') || n.includes('engineer') || n.includes('dev')) return { bg:'rgba(88,166,255,0.18)', color:'#58a6ff', label:'TECH' };
+    return null;
+  }
 
-        function onMsg(e) {
-          if (!e.data) return;
-          const d = typeof e.data === 'string' ? tryParse(e.data) : e.data;
-          if (!d) return;
-          if (d.type === 'registration' || d.event === 'registration') {
-            done = true;
-            window.removeEventListener('message', onMsg);
-            resolve(makeBridge(e.source, e.origin, d));
-          }
-        }
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    const d = new Date(ts);
+    if (isNaN(d)) return '—';
+    return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+  }
 
-        window.addEventListener('message', onMsg);
-        if (window.parent !== window) window.parent.postMessage({ type: 'register' }, '*');
+  let allHotlists = [];
+  let candidateName = '';
 
-        // Dev fallback
-        setTimeout(() => {
-          if (!done) { window.removeEventListener('message', onMsg); resolve(makeDevBridge()); }
-        }, 2500);
-      });
+  function render(filter) {
+    filter = (filter || '').toLowerCase();
+    const items = filter
+      ? allHotlists.filter(h => ((h.hotlistDefinition||{}).name||'').toLowerCase().includes(filter))
+      : allHotlists;
+
+    if (items.length === 0 && filter) {
+      setState('stateEmpty');
+      document.getElementById('emptyMsg').textContent = `No hotlists match "${filter}".`;
+      return;
     }
 
-    function makeBridge(source, origin, reg) {
-      return {
-        getRegistrationData: () => Promise.resolve(reg),
-        httpGET({ relativeURL }) {
-          return new Promise((res, rej) => {
-            const id = Math.random().toString(36).slice(2);
-            const h = e => {
-              const d = typeof e.data === 'string' ? tryParse(e.data) : e.data;
-              if (d && d.requestId === id) {
-                window.removeEventListener('message', h);
-                d.error ? rej(new Error(d.error)) : res(d.data);
-              }
-            };
-            window.addEventListener('message', h);
-            source.postMessage({ type: 'httpGET', relativeURL, requestId: id }, origin);
-            setTimeout(() => { window.removeEventListener('message', h); rej(new Error('timeout')); }, 10000);
-          });
-        }
-      };
-    }
+    setState('list');
+    document.getElementById('footer').classList.remove('hidden');
+    document.getElementById('footerNote').textContent =
+      `${items.length} hotlist${items.length !== 1 ? 's' : ''}${filter ? ' matched' : ''}`;
 
-    function makeDevBridge() {
-      return {
-        getRegistrationData: () => Promise.resolve({ EntityID: getParam('EntityID') }),
-        httpGET: () => Promise.reject(new Error('dev-mode'))
-      };
-    }
+    const listEl = document.getElementById('list');
+    listEl.innerHTML = '';
 
-    // ─────────────────────────────────────────────
-    //  Init
-    // ─────────────────────────────────────────────
-    async function init() {
-      show('loadingState');
+    items.forEach((item, i) => {
+      const def    = item.hotlistDefinition || {};
+      const name   = def.name || `Hotlist #${def.id || i+1}`;
+      const count  = def.countCandidates != null ? def.countCandidates : '—';
+      const owner  = def.owner
+        ? `${def.owner.firstName||''} ${def.owner.lastName||''}`.trim()
+        : '';
+      const added  = fmtDate(item.dateAdded || def.dateAdded);
+      const inits  = name.split(/\s+/).slice(0,2).map(w=>w[0]||'').join('').toUpperCase() || '?';
+      const pal    = PALETTES[i % PALETTES.length];
+      const tag    = tagFor(name);
 
-      try {
-        const bridge = await connectAppBridge();
+      const el = document.createElement('div');
+      el.className = 'hotlist-item';
+      el.style.animationDelay = `${i * 35}ms`;
+      el.innerHTML = `
+        <div class="avatar" style="background:${pal.bg};color:${pal.color}">${inits}</div>
+        <div class="row-body">
+          <div class="row-name">${esc(name)}</div>
+          <div class="row-meta">
+            <span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              ${esc(count)} candidates
+            </span>
+            ${owner ? `<span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              ${esc(owner)}
+            </span>` : ''}
+          </div>
+        </div>
+        <div class="row-right">
+          ${tag ? `<span class="tag" style="background:${tag.bg};color:${tag.color}">${esc(tag.label)}</span>` : ''}
+          <span class="row-date">${added}</span>
+        </div>
+      `;
+      listEl.appendChild(el);
+    });
+  }
 
-        let entityId = getParam('EntityID') || getParam('id');
-        if (!entityId) {
-          const reg = await bridge.getRegistrationData();
-          entityId = reg && (reg.EntityID || reg.id);
-        }
-        if (!entityId) throw new Error('No Candidate ID found. Open this card from a Candidate record.');
+  // ─────────────────────────────────────────────────────────────────
+  //  State helpers
+  // ─────────────────────────────────────────────────────────────────
+  function setState(id) {
+    ['stateLoading','stateError','stateEmpty','list'].forEach(s =>
+      document.getElementById(s).classList.add('hidden')
+    );
+    document.getElementById(id).classList.remove('hidden');
+  }
 
-        // Fetch candidate name + hotlists in parallel
-        const [candidate, hotlists] = await Promise.all([
-          fetchCandidate(bridge, entityId),
-          fetchHotlists(bridge, entityId)
-        ]);
+  function showError(msg) {
+    setState('stateError');
+    document.getElementById('errorMsg').textContent = msg || 'An unexpected error occurred.';
+  }
 
-        candidateName = candidate
-          ? `${candidate.firstName || ''} ${candidate.lastName || ''}`.trim()
-          : `Candidate #${entityId}`;
+  // ─────────────────────────────────────────────────────────────────
+  //  Mock data (dev / no AppBridge)
+  // ─────────────────────────────────────────────────────────────────
+  function mockHotlists() {
+    const now = Date.now();
+    return [
+      { id:1, dateAdded: now - 5*86400000,  hotlistDefinition:{ id:10, name:'VIP Tech Candidates',       owner:{ firstName:'Sarah', lastName:'Jones'   }, countCandidates:12 } },
+      { id:2, dateAdded: now - 14*86400000, hotlistDefinition:{ id:11, name:'Perm Engineering Leads',    owner:{ firstName:'Matt',  lastName:'Banbury'  }, countCandidates:8  } },
+      { id:3, dateAdded: now - 21*86400000, hotlistDefinition:{ id:12, name:'Contract Data Specialists', owner:{ firstName:'James', lastName:'Park'     }, countCandidates:23 } },
+      { id:4, dateAdded: now - 3*86400000,  hotlistDefinition:{ id:13, name:'Q3 Priority Pipeline',      owner:{ firstName:'Sarah', lastName:'Jones'   }, countCandidates:5  } },
+      { id:5, dateAdded: now - 60*86400000, hotlistDefinition:{ id:14, name:'Director Level Talent',     owner:{ firstName:'Matt',  lastName:'Banbury'  }, countCandidates:7  } },
+    ];
+  }
 
-        allHotlists = hotlists;
-        render();
+  // ─────────────────────────────────────────────────────────────────
+  //  Main flow
+  // ─────────────────────────────────────────────────────────────────
+  async function onRegistered() {
+    // EntityID is appended by Bullhorn to the card URL as a query param
+    let entityId = getParam('EntityID');
 
-      } catch (err) {
-        console.error(err);
-        showError(err.message);
-      }
-    }
-
-    // ─────────────────────────────────────────────
-    //  Data
-    // ─────────────────────────────────────────────
-    async function fetchCandidate(bridge, id) {
-      try {
-        const d = await bridge.httpGET({ relativeURL: `/entity/Candidate/${id}?fields=id,firstName,lastName,owner` });
-        return d.data || d;
-      } catch (e) {
-        if (e.message === 'dev-mode') return { firstName: 'Alex', lastName: 'Chen', id };
-        return null;
-      }
-    }
-
-    async function fetchHotlists(bridge, candidateId) {
-      try {
-        // CandidateHotlistStatus links a candidate to a HotlistDefinition
-        const d = await bridge.httpGET({
-          relativeURL: `/search/CandidateHotlistStatus?query=candidate.id:${candidateId}&fields=id,dateAdded,hotlistDefinition(id,name,owner(firstName,lastName),dateAdded,countCandidates)&count=50`
-        });
-        return (d.data || []);
-      } catch (e) {
-        if (e.message === 'dev-mode') return getMockHotlists();
-        throw e;
-      }
-    }
-
-    // ─────────────────────────────────────────────
-    //  Render
-    // ─────────────────────────────────────────────
-    function render(filter = '') {
-      const filtered = filter
-        ? allHotlists.filter(h => {
-            const name = (h.hotlistDefinition && h.hotlistDefinition.name) || '';
-            return name.toLowerCase().includes(filter.toLowerCase());
-          })
-        : allHotlists;
-
-      // Header
-      document.getElementById('headerSub').textContent = candidateName || 'Candidate hotlists';
+    if (!entityId) {
+      // Dev/demo mode — show mock data
+      candidateName = 'Demo Candidate';
+      allHotlists = mockHotlists();
+      document.getElementById('headerSub').textContent = candidateName;
       document.getElementById('countPill').textContent = allHotlists.length;
+      document.getElementById('countPill').classList.remove('hidden');
+      document.getElementById('searchWrap').classList.remove('hidden');
+      render();
+      return;
+    }
+
+    try {
+      const [candidate, hotlists] = await Promise.all([
+        fetchCandidate(entityId),
+        fetchHotlists(entityId)
+      ]);
+
+      candidateName = candidate
+        ? `${candidate.firstName||''} ${candidate.lastName||''}`.trim()
+        : `Candidate #${entityId}`;
+
+      allHotlists = hotlists;
+
+      document.getElementById('headerSub').textContent = candidateName;
 
       if (allHotlists.length === 0) {
-        show('emptyState');
+        setState('stateEmpty');
         document.getElementById('emptyMsg').textContent =
-          `${candidateName || 'This candidate'} hasn't been added to any hotlists yet.`;
+          `${candidateName} hasn't been added to any hotlists yet.`;
         return;
       }
 
+      document.getElementById('countPill').textContent = allHotlists.length;
       document.getElementById('countPill').classList.remove('hidden');
 
       if (allHotlists.length > 4) {
         document.getElementById('searchWrap').classList.remove('hidden');
       }
 
-      if (filtered.length === 0) {
-        show('emptyState');
-        document.getElementById('emptyMsg').textContent = `No hotlists match "${filter}".`;
-        return;
-      }
+      render();
 
-      show('listWrap');
-      document.getElementById('footer').classList.remove('hidden');
-
-      const list = document.getElementById('listWrap');
-      list.innerHTML = '';
-
-      filtered.forEach((item, i) => {
-        const def   = item.hotlistDefinition || {};
-        const name  = def.name || `Hotlist #${def.id || i}`;
-        const owner = def.owner
-          ? `${def.owner.firstName || ''} ${def.owner.lastName || ''}`.trim()
-          : '';
-        const count      = def.countCandidates || '—';
-        const addedTs    = item.dateAdded || def.dateAdded;
-        const addedStr   = addedTs ? fmtDate(addedTs) : '—';
-        const initials   = name.split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
-        const pal        = palette(i);
-        const ts         = tagStyle(name);
-
-        const el = document.createElement('div');
-        el.className = 'hotlist-item';
-        el.style.animationDelay = `${i * 40}ms`;
-
-        el.innerHTML = `
-          <div class="hotlist-avatar" style="background:${pal.bg};color:${pal.color}">${initials}</div>
-          <div class="hotlist-body">
-            <div class="hotlist-name">${escHtml(name)}</div>
-            <div class="hotlist-meta">
-              <span class="hotlist-meta-item">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                ${count} candidates
-              </span>
-              ${owner ? `<span class="hotlist-meta-item">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                ${escHtml(owner)}
-              </span>` : ''}
-            </div>
-          </div>
-          <div class="hotlist-right">
-            ${ts ? `<span class="tag" style="background:${ts.bg};color:${ts.color}">${escHtml(name.split(/\s+/)[0].toUpperCase())}</span>` : ''}
-            <span class="added-date">${addedStr}</span>
-          </div>
-        `;
-
-        list.appendChild(el);
-      });
-
-      // Footer
-      document.getElementById('footerNote').textContent =
-        `${filtered.length} hotlist${filtered.length !== 1 ? 's' : ''}${filter ? ' matched' : ''}`;
-      document.getElementById('footerOwner').textContent =
-        filtered.length < allHotlists.length ? `${allHotlists.length} total` : '';
+    } catch (err) {
+      console.error('Hotlist card error:', err);
+      showError(err.message || String(err));
     }
+  }
 
-    // ─────────────────────────────────────────────
-    //  Helpers
-    // ─────────────────────────────────────────────
-    function fmtDate(ts) {
-      const d = new Date(ts);
-      if (isNaN(d)) return '—';
-      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-    }
+  async function init() {
+    setState('stateLoading');
+    registered = false;
+    attempts = 0;
+    allHotlists = [];
+    register();
+  }
 
-    function escHtml(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
+  // ─────────────────────────────────────────────────────────────────
+  //  Search
+  // ─────────────────────────────────────────────────────────────────
+  document.getElementById('searchInput').addEventListener('input', e => {
+    render(e.target.value.trim());
+  });
 
-    function show(id) {
-      ['loadingState','errorState','emptyState','listWrap'].forEach(i => {
-        document.getElementById(i).classList.add('hidden');
-      });
-      document.getElementById(id).classList.remove('hidden');
-    }
-
-    function showError(msg) {
-      show('errorState');
-      document.getElementById('errorMsg').textContent = msg || 'An unexpected error occurred.';
-    }
-
-    // ─────────────────────────────────────────────
-    //  Search
-    // ─────────────────────────────────────────────
-    document.getElementById('searchInput').addEventListener('input', e => {
-      render(e.target.value.trim());
-    });
-
-    // ─────────────────────────────────────────────
-    //  Mock data
-    // ─────────────────────────────────────────────
-    function getMockHotlists() {
-      const now = Date.now();
-      return [
-        { id: 1, dateAdded: now - 5  * 86400000, hotlistDefinition: { id: 10, name: 'VIP Tech Candidates',      owner: { firstName: 'Sarah', lastName: 'Jones'   }, countCandidates: 12, dateAdded: now - 30 * 86400000 } },
-        { id: 2, dateAdded: now - 14 * 86400000, hotlistDefinition: { id: 11, name: 'Perm Engineering Leads',   owner: { firstName: 'Matt',  lastName: 'Banbury'  }, countCandidates: 8,  dateAdded: now - 60 * 86400000 } },
-        { id: 3, dateAdded: now - 21 * 86400000, hotlistDefinition: { id: 12, name: 'Contract Data Specialists',owner: { firstName: 'James', lastName: 'Park'     }, countCandidates: 23, dateAdded: now - 45 * 86400000 } },
-        { id: 4, dateAdded: now - 3  * 86400000, hotlistDefinition: { id: 13, name: 'Q3 Priority Pipeline',     owner: { firstName: 'Sarah', lastName: 'Jones'   }, countCandidates: 5,  dateAdded: now - 7  * 86400000 } },
-        { id: 5, dateAdded: now - 60 * 86400000, hotlistDefinition: { id: 14, name: 'Director Level Talent',    owner: { firstName: 'Matt',  lastName: 'Banbury'  }, countCandidates: 7,  dateAdded: now - 90 * 86400000 } },
-      ];
-    }
-
-    // ─────────────────────────────────────────────
-    //  Boot
-    // ─────────────────────────────────────────────
-    window.addEventListener('load', init);
+  window.addEventListener('load', init);
   </script>
 </body>
 </html>
